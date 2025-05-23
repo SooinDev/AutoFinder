@@ -30,7 +30,11 @@ public class AIRecommendationService {
 
     // 추천 캐시 (메모리에 일시적으로 저장)
     private final Map<Long, CachedRecommendation> recommendationCache = new HashMap<>();
-    private static final long CACHE_EXPIRY_MINUTES = 30;
+    private static final long CACHE_EXPIRY_MINUTES = 5; // 5분으로 단축
+
+    // 마지막 모델 학습 시간 추적
+    private LocalDateTime lastModelTrainingTime = null;
+    private LocalDateTime lastCarDataUpdateTime = null;
 
     /**
      * 애플리케이션 시작 시 AI 모델 학습
@@ -49,7 +53,7 @@ public class AIRecommendationService {
         try {
             log.info("개선된 AI 모델 학습 시작...");
 
-            // 모든 차량 데이터 조회 (최근 데이터 우선)
+            // 모든 차량 데이터 조회
             List<Car> allCars = carRepository.findAll();
 
             if (allCars.isEmpty()) {
@@ -64,7 +68,7 @@ public class AIRecommendationService {
 
             log.info("전체 차량: {}, 유효한 차량: {}", allCars.size(), validCars.size());
 
-            // 차량 데이터를 AI 서비스 형식으로 변환 (개선된 버전)
+            // 차량 데이터를 AI 서비스 형식으로 변환
             List<Object> carsData = validCars.stream()
                     .map(this::convertCarToEnhancedAIFormat)
                     .collect(Collectors.toList());
@@ -73,9 +77,11 @@ public class AIRecommendationService {
             boolean success = aiServiceClient.trainModel(carsData);
 
             if (success) {
-                log.info("개선된 AI 모델 학습 완료: {} 개의 차량 데이터로 학습", validCars.size());
-                // 캐시 초기화
-                recommendationCache.clear();
+                log.info("AI 모델 학습 완료: {} 개의 차량 데이터로 학습", validCars.size());
+                lastModelTrainingTime = LocalDateTime.now();
+                lastCarDataUpdateTime = LocalDateTime.now();
+                // 모델 재학습 시 모든 캐시 삭제
+                clearAllCache();
             } else {
                 log.error("AI 모델 학습 실패");
             }
@@ -96,10 +102,24 @@ public class AIRecommendationService {
     }
 
     /**
-     * 사용자별 차량 추천 (개선된 버전)
+     * 사용자별 차량 추천 (실시간 업데이트 버전)
      */
     public List<RecommendedCar> getRecommendationsForUser(Long userId, int topK) {
+        return getRecommendationsForUser(userId, topK, false);
+    }
+
+    /**
+     * 사용자별 차량 추천 (강제 새로고침 옵션 포함)
+     */
+    public List<RecommendedCar> getRecommendationsForUser(Long userId, int topK, boolean forceRefresh) {
         try {
+            // 강제 새로고침이거나 캐시가 만료된 경우
+            if (forceRefresh || shouldRefreshRecommendations(userId)) {
+                log.info("사용자 {}의 추천을 새로 생성합니다. (강제새로고침: {})", userId, forceRefresh);
+                clearUserCache(userId);
+                return generateFreshRecommendations(userId, topK);
+            }
+
             // 캐시 확인
             CachedRecommendation cached = recommendationCache.get(userId);
             if (cached != null && !cached.isExpired()) {
@@ -109,63 +129,155 @@ public class AIRecommendationService {
                         .collect(Collectors.toList());
             }
 
-            // 사용자 정보 조회
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-
-            List<Favorite> favorites = favoriteRepository.findByUser(user);
-
-            if (favorites.isEmpty()) {
-                log.info("사용자 {}의 즐겨찾기가 없어 개선된 일반 추천을 제공합니다.", userId);
-                List<RecommendedCar> recommendations = getEnhancedPopularCarsRecommendation(topK);
-                cacheRecommendations(userId, recommendations);
-                return recommendations;
-            }
-
-            // 즐겨찾기 분석
-            FavoriteAnalysis analysis = analyzeFavoritePatterns(favorites);
-
-            // 즐겨찾기한 차량 ID 리스트
-            List<Long> favoriteCarIds = favorites.stream()
-                    .map(favorite -> favorite.getCar().getId())
-                    .collect(Collectors.toList());
-
-            // 가중치가 적용된 즐겨찾기 리스트 (최근 것에 더 높은 가중치)
-            List<Long> weightedFavoriteIds = getWeightedFavoriteIds(favorites);
-
-            // AI 서비스에 추천 요청
-            AIServiceClient.AIRecommendationResponse response = aiServiceClient.getRecommendations(
-                    weightedFavoriteIds, favoriteCarIds, Math.max(topK * 2, 20) // 더 많은 후보 요청
-            );
-
-            List<RecommendedCar> recommendations;
-
-            if (response == null || response.getRecommendations().isEmpty()) {
-                log.warn("AI 추천 결과가 없어 하이브리드 추천을 제공합니다.");
-                recommendations = getHybridRecommendation(analysis, favoriteCarIds, topK);
-            } else {
-                // AI 추천 결과를 RecommendedCar 객체로 변환 및 후처리
-                recommendations = response.getRecommendations().stream()
-                        .map(this::convertAIRecommendationToRecommendedCar)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-
-                // 다양성 개선
-                recommendations = improveDiversity(recommendations, analysis);
-
-                // 최종 필터링 및 정렬
-                recommendations = applyFinalFiltering(recommendations, analysis, topK);
-            }
-
-            // 캐시에 저장
-            cacheRecommendations(userId, recommendations);
-
-            return recommendations.stream().limit(topK).collect(Collectors.toList());
+            // 캐시가 없거나 만료된 경우 새로 생성
+            return generateFreshRecommendations(userId, topK);
 
         } catch (Exception e) {
             log.error("사용자 {} 추천 생성 중 오류: {}", userId, e.getMessage(), e);
             return getEnhancedPopularCarsRecommendation(topK);
         }
+    }
+
+    /**
+     * 새로운 추천 생성
+     */
+    private List<RecommendedCar> generateFreshRecommendations(Long userId, int topK) {
+        // 사용자 정보 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        List<Favorite> favorites = favoriteRepository.findByUser(user);
+
+        if (favorites.isEmpty()) {
+            log.info("사용자 {}의 즐겨찾기가 없어 인기 차량 추천을 제공합니다.", userId);
+            List<RecommendedCar> recommendations = getEnhancedPopularCarsRecommendation(topK);
+            cacheRecommendations(userId, recommendations);
+            return recommendations;
+        }
+
+        // 데이터 변경 확인 후 필요시 모델 재학습
+        checkAndUpdateModelIfNeeded();
+
+        // 즐겨찾기 분석
+        FavoriteAnalysis analysis = analyzeFavoritePatterns(favorites);
+
+        // 즐겨찾기한 차량 ID 리스트
+        List<Long> favoriteCarIds = favorites.stream()
+                .map(favorite -> favorite.getCar().getId())
+                .collect(Collectors.toList());
+
+        // 가중치가 적용된 즐겨찾기 리스트
+        List<Long> weightedFavoriteIds = getWeightedFavoriteIds(favorites);
+
+        // AI 서비스에 추천 요청
+        AIServiceClient.AIRecommendationResponse response = aiServiceClient.getRecommendations(
+                weightedFavoriteIds, favoriteCarIds, Math.max(topK * 3, 30) // 더 많은 후보 요청
+        );
+
+        List<RecommendedCar> recommendations;
+
+        if (response == null || response.getRecommendations().isEmpty()) {
+            log.warn("AI 추천 결과가 없어 하이브리드 추천을 제공합니다.");
+            recommendations = getHybridRecommendation(analysis, favoriteCarIds, topK);
+        } else {
+            // AI 추천 결과를 RecommendedCar 객체로 변환
+            recommendations = response.getRecommendations().stream()
+                    .map(this::convertAIRecommendationToRecommendedCar)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            // 다양성 개선
+            recommendations = improveDiversity(recommendations, analysis);
+
+            // 최종 필터링 및 정렬
+            recommendations = applyFinalFiltering(recommendations, analysis, topK);
+        }
+
+        // 캐시에 저장
+        cacheRecommendations(userId, recommendations);
+
+        return recommendations.stream().limit(topK).collect(Collectors.toList());
+    }
+
+    /**
+     * 추천 새로고침이 필요한지 확인
+     */
+    private boolean shouldRefreshRecommendations(Long userId) {
+        CachedRecommendation cached = recommendationCache.get(userId);
+
+        // 캐시가 없으면 새로고침 필요
+        if (cached == null) {
+            return true;
+        }
+
+        // 캐시가 만료되었으면 새로고침 필요
+        if (cached.isExpired()) {
+            return true;
+        }
+
+        // 사용자의 즐겨찾기가 변경되었는지 확인
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null) {
+            List<Favorite> currentFavorites = favoriteRepository.findByUser(user);
+            if (currentFavorites.size() != cached.getFavoriteCount()) {
+                log.info("사용자 {}의 즐겨찾기 개수가 변경됨: {} -> {}",
+                        userId, cached.getFavoriteCount(), currentFavorites.size());
+                return true;
+            }
+
+            // 즐겨찾기 목록이 변경되었는지 확인
+            Set<Long> cachedFavoriteIds = cached.getFavoriteCarIds();
+            Set<Long> currentFavoriteIds = currentFavorites.stream()
+                    .map(f -> f.getCar().getId())
+                    .collect(Collectors.toSet());
+
+            if (!cachedFavoriteIds.equals(currentFavoriteIds)) {
+                log.info("사용자 {}의 즐겨찾기 목록이 변경됨", userId);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 데이터 변경 확인 후 모델 업데이트
+     */
+    private void checkAndUpdateModelIfNeeded() {
+        // 새로운 차량이 추가되었는지 확인 (간단한 방식)
+        List<Car> recentCars = carRepository.findAll().stream()
+                .filter(car -> lastCarDataUpdateTime == null ||
+                        (car.getCreatedAt() != null && car.getCreatedAt().isAfter(lastCarDataUpdateTime)))
+                .collect(Collectors.toList());
+
+        if (!recentCars.isEmpty()) {
+            log.info("새로운 차량 {}대가 추가되어 모델을 업데이트합니다.", recentCars.size());
+            trainAIModelAsync();
+        }
+    }
+
+    /**
+     * 특정 사용자 캐시 삭제
+     */
+    public void clearUserCache(Long userId) {
+        recommendationCache.remove(userId);
+        log.info("사용자 {} 캐시 삭제됨", userId);
+    }
+
+    /**
+     * 모든 캐시 삭제
+     */
+    public void clearAllCache() {
+        recommendationCache.clear();
+        log.info("모든 추천 캐시 삭제됨");
+    }
+
+    /**
+     * 사용자 즐겨찾기 변경 시 호출 (FavoriteService에서 호출)
+     */
+    public void onFavoriteChanged(Long userId) {
+        clearUserCache(userId);
+        log.info("사용자 {}의 즐겨찾기 변경으로 캐시 무효화", userId);
     }
 
     /**
@@ -208,6 +320,7 @@ public class AIRecommendationService {
 
             enhancedAnalysis.put("local_analysis", localAnalysisMap);
             enhancedAnalysis.put("analysis_version", "enhanced_v2.0");
+            enhancedAnalysis.put("last_updated", LocalDateTime.now().toString());
 
             return enhancedAnalysis;
 
@@ -216,6 +329,9 @@ public class AIRecommendationService {
             return Map.of("error", "선호도 분석 중 오류가 발생했습니다.");
         }
     }
+
+    // 이하 기존 메서드들 (analyzeFavoritePatterns, getWeightedFavoriteIds 등)은 동일하므로 생략...
+    // [기존 메서드들을 여기에 포함]
 
     /**
      * 즐겨찾기 패턴 분석
@@ -238,7 +354,6 @@ public class AIRecommendationService {
             analysis.setAvgPrice(prices.stream().mapToLong(Long::longValue).average().orElse(0));
             analysis.setPriceRange(Collections.max(prices) - Collections.min(prices));
 
-            // 가격 일관성 (표준편차 기반)
             double priceStd = calculateStandardDeviation(prices);
             analysis.setConsistencyScore(Math.max(0, 1 - (priceStd / analysis.getAvgPrice())));
         }
@@ -284,7 +399,6 @@ public class AIRecommendationService {
      * 가중치가 적용된 즐겨찾기 ID 리스트 생성
      */
     private List<Long> getWeightedFavoriteIds(List<Favorite> favorites) {
-        // 최근 즐겨찾기에 더 높은 가중치 적용
         return favorites.stream()
                 .sorted((f1, f2) -> f2.getCreatedAt().compareTo(f1.getCreatedAt()))
                 .map(favorite -> favorite.getCar().getId())
@@ -297,9 +411,8 @@ public class AIRecommendationService {
     private List<RecommendedCar> getHybridRecommendation(FavoriteAnalysis analysis, List<Long> excludeIds, int topK) {
         List<RecommendedCar> recommendations = new ArrayList<>();
 
-        // 1. 유사한 가격대 차량 추천
         if (analysis.getAvgPrice() > 0) {
-            double priceMargin = 0.3; // 30% 여유
+            double priceMargin = 0.3;
             Long minPrice = (long) (analysis.getAvgPrice() * (1 - priceMargin));
             Long maxPrice = (long) (analysis.getAvgPrice() * (1 + priceMargin));
 
@@ -315,7 +428,6 @@ public class AIRecommendationService {
             }
         }
 
-        // 2. 선호 브랜드 추천
         String preferredBrand = analysis.getPreferredBrands().entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
@@ -351,7 +463,6 @@ public class AIRecommendationService {
             String brand = extractBrand(rec.getCar().getModel());
             String priceRange = getPriceRange(rec.getCar().getPrice());
 
-            // 다양성 확보를 위해 같은 브랜드/가격대는 제한적으로 추가
             if (diversifiedList.size() < 3 ||
                     (!usedBrands.contains(brand) || !usedPriceRanges.contains(priceRange))) {
                 diversifiedList.add(rec);
@@ -375,11 +486,9 @@ public class AIRecommendationService {
         return recommendations.stream()
                 .filter(rec -> rec.getCar().getPrice() != null && rec.getCar().getPrice() != 9999)
                 .sorted((r1, r2) -> {
-                    // 1차: 유사도 점수
                     int scoreCompare = Double.compare(r2.getSimilarityScore(), r1.getSimilarityScore());
                     if (scoreCompare != 0) return scoreCompare;
 
-                    // 2차: 가격 선호도와의 차이
                     double price1Diff = Math.abs(r1.getCar().getPrice() - analysis.getAvgPrice());
                     double price2Diff = Math.abs(r2.getCar().getPrice() - analysis.getAvgPrice());
                     return Double.compare(price1Diff, price2Diff);
@@ -392,7 +501,6 @@ public class AIRecommendationService {
      * 개선된 인기 차량 추천
      */
     private List<RecommendedCar> getEnhancedPopularCarsRecommendation(int topK) {
-        // 최근 등록된 차량 중에서 선별
         List<Car> recentCars = carRepository.findAll().stream()
                 .filter(car -> car.getCreatedAt() != null)
                 .filter(car -> car.getCreatedAt().isAfter(LocalDateTime.now().minus(30, ChronoUnit.DAYS)))
@@ -402,7 +510,6 @@ public class AIRecommendationService {
                 .collect(Collectors.toList());
 
         if (recentCars.size() < topK) {
-            // 최근 차량이 부족하면 전체에서 선별
             List<Car> allCars = carRepository.findAll().stream()
                     .filter(car -> car.getPrice() != null && car.getPrice() != 9999)
                     .sorted((a, b) -> Long.compare(b.getId(), a.getId()))
@@ -442,7 +549,6 @@ public class AIRecommendationService {
         carData.put("region", car.getRegion());
         carData.put("carType", car.getCarType());
 
-        // 추가 파생 정보
         carData.put("brand", extractBrand(car.getModel()));
         carData.put("price_range", getPriceRange(car.getPrice()));
         carData.put("car_age", 2024 - extractYear(car.getYear()));
@@ -451,12 +557,33 @@ public class AIRecommendationService {
     }
 
     /**
-     * 캐시 관리
+     * 캐시 관리 (개선된 버전)
      */
     private void cacheRecommendations(Long userId, List<RecommendedCar> recommendations) {
-        recommendationCache.put(userId, new CachedRecommendation(recommendations, LocalDateTime.now()));
+        // 현재 즐겨찾기 정보도 함께 캐시
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null) {
+            List<Favorite> favorites = favoriteRepository.findByUser(user);
+            Set<Long> favoriteCarIds = favorites.stream()
+                    .map(f -> f.getCar().getId())
+                    .collect(Collectors.toSet());
 
-        // 캐시 크기 제한 (메모리 관리)
+            recommendationCache.put(userId, new CachedRecommendation(
+                    recommendations,
+                    LocalDateTime.now(),
+                    favorites.size(),
+                    favoriteCarIds
+            ));
+        } else {
+            recommendationCache.put(userId, new CachedRecommendation(
+                    recommendations,
+                    LocalDateTime.now(),
+                    0,
+                    new HashSet<>()
+            ));
+        }
+
+        // 캐시 크기 제한
         if (recommendationCache.size() > 1000) {
             LocalDateTime cutoff = LocalDateTime.now().minus(CACHE_EXPIRY_MINUTES, ChronoUnit.MINUTES);
             recommendationCache.entrySet().removeIf(entry -> entry.getValue().getTimestamp().isBefore(cutoff));
@@ -503,13 +630,13 @@ public class AIRecommendationService {
     }
 
     private double calculateRecommendationConfidence(FavoriteAnalysis analysis, int sampleSize) {
-        double baseConfidence = Math.min(sampleSize / 10.0, 1.0); // 10개 이상이면 최대 신뢰도
+        double baseConfidence = Math.min(sampleSize / 10.0, 1.0);
         double consistencyBonus = analysis.getConsistencyScore() * 0.3;
         return Math.min(baseConfidence + consistencyBonus, 1.0);
     }
 
     /**
-     * AI 추천 결과를 RecommendedCar로 변환 (개선된 버전)
+     * AI 추천 결과를 RecommendedCar로 변환
      */
     private RecommendedCar convertAIRecommendationToRecommendedCar(AIServiceClient.RecommendationItem item) {
         try {
@@ -592,10 +719,15 @@ public class AIRecommendationService {
     private static class CachedRecommendation {
         private final List<RecommendedCar> recommendations;
         private final LocalDateTime timestamp;
+        private final int favoriteCount;
+        private final Set<Long> favoriteCarIds;
 
-        public CachedRecommendation(List<RecommendedCar> recommendations, LocalDateTime timestamp) {
+        public CachedRecommendation(List<RecommendedCar> recommendations, LocalDateTime timestamp,
+                                    int favoriteCount, Set<Long> favoriteCarIds) {
             this.recommendations = new ArrayList<>(recommendations);
             this.timestamp = timestamp;
+            this.favoriteCount = favoriteCount;
+            this.favoriteCarIds = new HashSet<>(favoriteCarIds);
         }
 
         public boolean isExpired() {
@@ -608,6 +740,14 @@ public class AIRecommendationService {
 
         public LocalDateTime getTimestamp() {
             return timestamp;
+        }
+
+        public int getFavoriteCount() {
+            return favoriteCount;
+        }
+
+        public Set<Long> getFavoriteCarIds() {
+            return new HashSet<>(favoriteCarIds);
         }
     }
 
