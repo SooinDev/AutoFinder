@@ -28,4 +28,22 @@ CREATE TABLE favorites (
                            FOREIGN KEY (car_id) REFERENCES cars(id) ON DELETE CASCADE
 );
 
+-- user_preferences 테이블 생성
+CREATE TABLE user_preferences (
+                                  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                                  user_id BIGINT NOT NULL,
+                                  min_price BIGINT,
+                                  max_price BIGINT,
+                                  min_year INT,
+                                  max_year INT,
+                                  max_mileage BIGINT,
+                                  preferred_brands VARCHAR(255),
+                                  preferred_fuel_types VARCHAR(255),
+                                  preferred_regions VARCHAR(255),
+                                  preference_score DOUBLE DEFAULT 0.0,
+                                  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 TRUNCATE TABLE users;
