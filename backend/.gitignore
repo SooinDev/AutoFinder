@@ -1,0 +1,41 @@
+# macOS 시스템 파일
+.DS_Store
+
+# IDE 설정
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# 로그 파일
+*.log
+*.swp
+*.swo
+
+# Node.js (React) 관련
+node_modules/
+package-lock.json
+yarn.lock
+npm-debug.log
+dist/
+build/ # 리액트와 Gradle 모두 사용하는 디렉토리면 유지
+
+# Spring Boot
+target/
+logs/
+*.env
+application.properties
+application.yml
+**/application.properties
+**/application.yml
+
+# Gradle
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+
+# VS Code 관련 (frontend 디렉토리 안의 vscode만 무시할 경우)
+frontend/.vscode/
+
+# 크롤링 관련
+scripts/crawler.py
