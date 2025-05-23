@@ -14,6 +14,7 @@ import java.util.Map;
 public class AnalyticsController {
     private final AnalyticsService analyticsService;
 
+    // 테스트
     /**
      * 특정 모델의 연식별 가격 통계 조회 API
      * @param model 차량 모델명
