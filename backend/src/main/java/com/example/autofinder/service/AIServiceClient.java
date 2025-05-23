@@ -1,2 +1,236 @@
-package com.example.autofinder.service;public class AIServiceClient {
+package com.example.autofinder.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientException;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Service
+@Slf4j
+public class AIServiceClient {
+
+    @Value("${ai.service.base-url:http://localhost:5000}")
+    private String aiServiceBaseUrl;
+
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    public AIServiceClient(RestTemplate restTemplate, ObjectMapper objectMapper) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * AI 서비스 헬스 체크
+     */
+    public boolean isAIServiceHealthy() {
+        try {
+            String url = aiServiceBaseUrl + "/health";
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            return response.getStatusCode() == HttpStatus.OK;
+        } catch (Exception e) {
+            log.error("AI 서비스 헬스 체크 실패: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * AI 모델 학습 (전체 차량 데이터 전송)
+     */
+    public boolean trainModel(List<Object> carsData) {
+        try {
+            String url = aiServiceBaseUrl + "/train";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("cars", carsData);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                log.info("AI 모델 학습 성공: {} 개의 차량 데이터", carsData.size());
+                return true;
+            } else {
+                log.error("AI 모델 학습 실패: HTTP {}", response.getStatusCode());
+                return false;
+            }
+
+        } catch (RestClientException e) {
+            log.error("AI 모델 학습 중 오류 발생: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * 차량 추천 요청
+     */
+    public AIRecommendationResponse getRecommendations(List<Long> favoriteCarIds, List<Long> excludeIds, int topK) {
+        try {
+            String url = aiServiceBaseUrl + "/recommend";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("favorite_car_ids", favoriteCarIds);
+            requestBody.put("exclude_ids", excludeIds != null ? excludeIds : List.of());
+            requestBody.put("top_k", topK);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<AIRecommendationResponse> response = restTemplate.postForEntity(
+                    url, request, AIRecommendationResponse.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                log.info("AI 추천 성공: {} 개의 추천 차량", response.getBody().getRecommendations().size());
+                return response.getBody();
+            } else {
+                log.error("AI 추천 실패: HTTP {}", response.getStatusCode());
+                return null;
+            }
+
+        } catch (RestClientException e) {
+            log.error("AI 추천 요청 중 오류 발생: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 사용자 선호도 분석 요청
+     */
+    public UserPreferenceAnalysis analyzeUserPreferences(List<Long> favoriteCarIds) {
+        try {
+            String url = aiServiceBaseUrl + "/user-analysis";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("favorite_car_ids", favoriteCarIds);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<UserPreferenceAnalysis> response = restTemplate.postForEntity(
+                    url, request, UserPreferenceAnalysis.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                log.info("사용자 선호도 분석 성공");
+                return response.getBody();
+            } else {
+                log.error("사용자 선호도 분석 실패: HTTP {}", response.getStatusCode());
+                return null;
+            }
+
+        } catch (RestClientException e) {
+            log.error("사용자 선호도 분석 중 오류 발생: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    // DTO 클래스들
+    public static class AIRecommendationResponse {
+        private List<RecommendationItem> recommendations;
+        private int totalCount;
+        private String timestamp;
+
+        // getters and setters
+        public List<RecommendationItem> getRecommendations() {
+            return recommendations;
+        }
+
+        public void setRecommendations(List<RecommendationItem> recommendations) {
+            this.recommendations = recommendations;
+        }
+
+        public int getTotalCount() {
+            return totalCount;
+        }
+
+        public void setTotalCount(int totalCount) {
+            this.totalCount = totalCount;
+        }
+
+        public String getTimestamp() {
+            return timestamp;
+        }
+
+        public void setTimestamp(String timestamp) {
+            this.timestamp = timestamp;
+        }
+    }
+
+    public static class RecommendationItem {
+        private Map<String, Object> car;
+        private double similarityScore;
+        private String recommendationReason;
+
+        // getters and setters
+        public Map<String, Object> getCar() {
+            return car;
+        }
+
+        public void setCar(Map<String, Object> car) {
+            this.car = car;
+        }
+
+        public double getSimilarityScore() {
+            return similarityScore;
+        }
+
+        public void setSimilarityScore(double similarityScore) {
+            this.similarityScore = similarityScore;
+        }
+
+        public String getRecommendationReason() {
+            return recommendationReason;
+        }
+
+        public void setRecommendationReason(String recommendationReason) {
+            this.recommendationReason = recommendationReason;
+        }
+    }
+
+    public static class UserPreferenceAnalysis {
+        private Map<String, Object> analysis;
+        private int favoriteCaresCount;
+        private String timestamp;
+
+        // getters and setters
+        public Map<String, Object> getAnalysis() {
+            return analysis;
+        }
+
+        public void setAnalysis(Map<String, Object> analysis) {
+            this.analysis = analysis;
+        }
+
+        public int getFavoriteCaresCount() {
+            return favoriteCaresCount;
+        }
+
+        public void setFavoriteCaresCount(int favoriteCaresCount) {
+            this.favoriteCaresCount = favoriteCaresCount;
+        }
+
+        public String getTimestamp() {
+            return timestamp;
+        }
+
+        public void setTimestamp(String timestamp) {
+            this.timestamp = timestamp;
+        }
+    }
 }
