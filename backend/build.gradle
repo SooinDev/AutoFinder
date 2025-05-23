@@ -47,6 +47,9 @@ dependencies {
 	// 테스트 관련 Dependencies
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }
 
 tasks.named('test') {
