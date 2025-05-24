@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class SmartAIRecommendationService {
+public class DeepLearningRecommendationService {
 
     private final AIServiceClient aiServiceClient;
     private final CarRepository carRepository;
@@ -160,13 +160,20 @@ public class SmartAIRecommendationService {
                     ? userBehaviorService.getUserBehaviorData(userId)
                     : Collections.emptyMap();
 
-            // 3. AI 서버에 딥러닝 요청 (기존 메서드 사용하되 파라미터 조정)
+            // 3. AI 서버에 딥러닝 요청 (수정된 방식)
             List<Long> favoriteCarIds = getUserFavoriteCarIds(userId);
 
-            AIServiceClient.AIRecommendationResponse response = aiServiceClient.getRecommendations(
+            // 후보 차량을 AI 서비스 형식으로 변환
+            List<Map<String, Object>> candidateCarData = candidateCars.stream()
+                    .map(this::convertCarToAIFormat)
+                    .collect(Collectors.toList());
+
+            AIServiceClient.AIRecommendationResponse response = aiServiceClient.getRecommendationsWithCandidates(
+                    userId,
                     favoriteCarIds,
+                    candidateCarData,
                     favoriteCarIds,  // exclude 목록
-                    topK * 2  // 더 많은 후보 요청
+                    topK
             );
 
             if (response == null || response.getRecommendations().isEmpty()) {
@@ -187,6 +194,51 @@ public class SmartAIRecommendationService {
             log.error("딥러닝 추천 시도 중 오류 - 사용자: {}", userId, e);
             throw e;
         }
+    }
+
+    /**
+     * 차량을 AI 서비스 형식으로 변환
+     */
+    private Map<String, Object> convertCarToAIFormat(Car car) {
+        Map<String, Object> carData = new HashMap<>();
+        carData.put("id", car.getId());
+        carData.put("model", car.getModel());
+        carData.put("year", extractYear(car.getYear()));
+        carData.put("price", car.getPrice());
+        carData.put("mileage", car.getMileage() != null ? car.getMileage() : 0);
+        carData.put("fuel", car.getFuel());
+        carData.put("region", car.getRegion());
+        carData.put("carType", car.getCarType());
+        carData.put("brand", extractBrand(car.getModel()));
+
+        return carData;
+    }
+
+    /**
+     * 연식에서 연도 추출 (예: "22/01식" -> 2022)
+     */
+    private int extractYear(String yearStr) {
+        if (yearStr == null || yearStr.trim().isEmpty()) {
+            return 2020; // 기본값
+        }
+
+        try {
+            // 숫자만 추출
+            String digits = yearStr.replaceAll("[^0-9]", "");
+
+            if (digits.length() >= 4) {
+                // 4자리 연도 (예: "2023")
+                return Integer.parseInt(digits.substring(0, 4));
+            } else if (digits.length() >= 2) {
+                // 2자리 연도 (예: "23")
+                int year = Integer.parseInt(digits.substring(0, 2));
+                return year > 50 ? 1900 + year : 2000 + year;
+            }
+        } catch (NumberFormatException e) {
+            log.debug("연식 파싱 실패: {}", yearStr);
+        }
+
+        return 2020; // 파싱 실패 시 기본값
     }
 
     /**
@@ -416,13 +468,26 @@ public class SmartAIRecommendationService {
                 car.getFuel() != null && !car.getFuel().trim().isEmpty();
     }
 
+    /**
+     * 모델명에서 브랜드 추출
+     */
     private String extractBrand(String model) {
-        if (model == null) return "";
-        String[] brands = {"현대", "기아", "제네시스", "르노", "쉐보레", "쌍용", "BMW", "벤츠", "아우디"};
-        for (String brand : brands) {
-            if (model.contains(brand)) return brand;
+        if (model == null || model.trim().isEmpty()) {
+            return "기타";
         }
-        return model.split("\\s+")[0];
+
+        // 주요 브랜드 목록
+        String[] brands = {"현대", "기아", "제네시스", "르노", "쉐보레", "쌍용", "BMW", "벤츠", "아우디", "볼보", "폭스바겐"};
+
+        for (String brand : brands) {
+            if (model.contains(brand)) {
+                return brand;
+            }
+        }
+
+        // 브랜드를 찾지 못한 경우 첫 번째 단어 반환
+        String[] parts = model.split("\\s+");
+        return parts.length > 0 ? parts[0] : "기타";
     }
 
     private String getCurrentProfile() {
