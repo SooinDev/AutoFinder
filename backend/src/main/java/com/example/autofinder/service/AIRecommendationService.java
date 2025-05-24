@@ -27,6 +27,7 @@ public class AIRecommendationService {
     private final CarRepository carRepository;
     private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
+    private final UserBehaviorService userBehaviorService;
 
     // 추천 캐시 (메모리에 일시적으로 저장)
     private final Map<Long, CachedRecommendation> recommendationCache = new HashMap<>();
@@ -35,6 +36,8 @@ public class AIRecommendationService {
     // 마지막 모델 학습 시간 추적
     private LocalDateTime lastModelTrainingTime = null;
     private LocalDateTime lastCarDataUpdateTime = null;
+
+    private boolean aiModelTrained = false; // AI 모델 학습 여부 추적
 
     /**
      * 애플리케이션 시작 시 AI 모델 학습
@@ -73,22 +76,52 @@ public class AIRecommendationService {
                     .map(this::convertCarToEnhancedAIFormat)
                     .collect(Collectors.toList());
 
+            // 즐겨찾기 데이터 수집
+            List<Map<String, Object>> favoritesData = favoriteRepository.findAll().stream()
+                    .map(this::convertFavoriteToAIFormat)
+                    .collect(Collectors.toList());
+
+            // 사용자 행동 데이터 수집 (UserBehaviorService가 있는 경우)
+            Map<String, Object> userBehaviors = new HashMap<>();
+            try {
+                if (userBehaviorService != null) {
+                    userBehaviors = userBehaviorService.getAllUserBehaviors();
+                }
+            } catch (Exception e) {
+                log.warn("사용자 행동 데이터 수집 중 오류 (계속 진행): {}", e.getMessage());
+            }
+
             // AI 서비스에 학습 요청
-            boolean success = aiServiceClient.trainModel(carsData);
+            boolean success = aiServiceClient.trainModelWithFavorites(carsData, favoritesData, userBehaviors);
 
             if (success) {
-                log.info("AI 모델 학습 완료: {} 개의 차량 데이터로 학습", validCars.size());
+                log.info("AI 모델 학습 완료: {} 개의 차량 데이터, {} 개의 즐겨찾기 데이터로 학습",
+                        validCars.size(), favoritesData.size());
                 lastModelTrainingTime = LocalDateTime.now();
                 lastCarDataUpdateTime = LocalDateTime.now();
+                aiModelTrained = true; // AI 모델 학습 완료 상태 업데이트
                 // 모델 재학습 시 모든 캐시 삭제
                 clearAllCache();
             } else {
                 log.error("AI 모델 학습 실패");
+                aiModelTrained = false;
             }
 
         } catch (Exception e) {
             log.error("AI 모델 학습 중 오류 발생: {}", e.getMessage(), e);
+            aiModelTrained = false;
         }
+    }
+
+    /**
+     * 즐겨찾기를 AI 형식으로 변환
+     */
+    private Map<String, Object> convertFavoriteToAIFormat(Favorite favorite) {
+        Map<String, Object> favoriteData = new HashMap<>();
+        favoriteData.put("user_id", favorite.getUser().getId());
+        favoriteData.put("car_id", favorite.getCar().getId());
+        favoriteData.put("created_at", favorite.getCreatedAt().toString());
+        return favoriteData;
     }
 
     /**
@@ -789,5 +822,38 @@ public class AIRecommendationService {
         public int hashCode() {
             return Objects.hash(car.getId());
         }
+    }
+
+    /**
+     * AI 모델 학습 상태 확인
+     */
+    public boolean isAIModelTrained() {
+        return aiModelTrained;
+    }
+
+    /**
+     * AI 추천 시스템 상태 정보
+     */
+    public Map<String, Object> getAISystemStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        status.put("aiServiceConnected", aiServiceClient.isAIServiceHealthy());
+        status.put("aiModelTrained", aiModelTrained);
+        status.put("lastTrainingTime", lastModelTrainingTime != null ? lastModelTrainingTime.toString() : null);
+
+        long totalCars = carRepository.count();
+        long totalFavorites = favoriteRepository.count();
+        long totalUsers = userRepository.count();
+
+        status.put("totalCars", totalCars);
+        status.put("totalFavorites", totalFavorites);
+        status.put("totalUsers", totalUsers);
+        status.put("cacheSize", recommendationCache.size());
+
+        // 추천 가능 여부
+        status.put("recommendationReady", totalCars > 0);
+        status.put("personalizedRecommendationReady", aiModelTrained && totalFavorites > 0);
+
+        return status;
     }
 }
