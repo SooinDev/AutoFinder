@@ -48,15 +48,11 @@ public class FavoriteService {
         log.info("   - 사용자 총 즐겨찾기: {} 개", userFavorites);
         log.info("   - 전체 즐겨찾기: {} 개", totalFavorites);
 
-        // 즐겨찾기 추가 시 해당 사용자의 추천 캐시 무효화 및 AI 재학습 체크
+        // 즐겨찾기 추가 시 해당 사용자의 추천 캐시 무효화
         aiRecommendationService.onFavoriteChanged(userId);
 
-        // 첫 번째 즐겨찾기인 경우 특별 메시지
-        if (totalFavorites == 1) {
-            log.info("🎉 첫 번째 즐겨찾기 생성! AI 개인화 학습이 곧 시작됩니다.");
-        } else if (totalFavorites % 5 == 0) {
-            log.info("📊 즐겨찾기 {}개 달성! AI 모델 업데이트가 진행됩니다.", totalFavorites);
-        }
+        // 🔥 즉시 AI 모델 재학습 트리거
+        triggerRealTimeModelUpdate(totalFavorites, userFavorites, "즐겨찾기 추가");
     }
 
     // 관심 차량 삭제
@@ -81,12 +77,44 @@ public class FavoriteService {
         log.info("   - 사용자 총 즐겨찾기: {} 개", userFavorites);
         log.info("   - 전체 즐겨찾기: {} 개", totalFavorites);
 
-        // 즐겨찾기 삭제 시 해당 사용자의 추천 캐시 무효화 및 AI 재학습 체크
+        // 즐겨찾기 삭제 시 해당 사용자의 추천 캐시 무효화
         aiRecommendationService.onFavoriteChanged(userId);
 
-        // 마지막 즐겨찾기를 삭제한 경우
-        if (totalFavorites == 0) {
-            log.info("⚠️ 모든 즐겨찾기가 삭제되었습니다. AI 개인화 추천이 비활성화됩니다.");
+        // 🔥 즉시 AI 모델 재학습 트리거
+        triggerRealTimeModelUpdate(totalFavorites, userFavorites, "즐겨찾기 삭제");
+    }
+
+    /**
+     * 🚀 실시간 AI 모델 업데이트 트리거
+     */
+    private void triggerRealTimeModelUpdate(long totalFavorites, long userFavorites, String action) {
+        try {
+            // 최소 즐겨찾기 수 확인 (AI 학습에 필요한 최소 데이터)
+            if (totalFavorites >= 1) { // 1개 이상부터 즉시 학습 시작
+                log.info("🤖 {}로 인한 즉시 AI 모델 재학습 시작...", action);
+                log.info("📊 현재 상태: 전체 즐겨찾기 {}개, 사용자 즐겨찾기 {}개", totalFavorites, userFavorites);
+
+                // 비동기적으로 AI 모델 재학습 실행
+                aiRecommendationService.trainAIModelAsync();
+
+                // 성과 메시지
+                if (totalFavorites == 1) {
+                    log.info("🎉 첫 번째 즐겨찾기! AI 개인화 학습이 시작됩니다.");
+                } else if (totalFavorites % 5 == 0) {
+                    log.info("📈 즐겨찾기 {}개 달성! AI 모델이 더욱 정교해집니다.", totalFavorites);
+                } else {
+                    log.info("⚡ AI 모델이 실시간으로 업데이트됩니다.");
+                }
+
+            } else {
+                log.info("⚠️ 즐겨찾기가 모두 삭제되어 AI 개인화 추천이 비활성화됩니다.");
+                // 모든 추천 캐시 클리어
+                aiRecommendationService.clearAllCache();
+            }
+
+        } catch (Exception e) {
+            log.error("❌ 실시간 AI 모델 업데이트 중 오류 발생: {}", e.getMessage(), e);
+            // 오류가 발생해도 즐겨찾기 동작 자체는 계속 진행
         }
     }
 
@@ -151,6 +179,28 @@ public class FavoriteService {
                 .orElseThrow(() -> new RuntimeException("Car not found"));
 
         return favoriteRepository.findByUserAndCar(user, car).isPresent();
+    }
+
+    /**
+     * 🔄 수동 AI 재학습 트리거 (관리자용)
+     */
+    public boolean triggerManualAIRetraining() {
+        try {
+            long totalFavorites = favoriteRepository.count();
+
+            if (totalFavorites == 0) {
+                log.warn("❌ 즐겨찾기 데이터가 없어 AI 재학습을 할 수 없습니다.");
+                return false;
+            }
+
+            log.info("🔧 관리자가 수동으로 AI 재학습을 트리거했습니다. (즐겨찾기: {}개)", totalFavorites);
+            aiRecommendationService.trainAIModelAsync();
+            return true;
+
+        } catch (Exception e) {
+            log.error("❌ 수동 AI 재학습 중 오류: {}", e.getMessage(), e);
+            return false;
+        }
     }
 
     /**

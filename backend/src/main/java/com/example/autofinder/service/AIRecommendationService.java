@@ -16,6 +16,7 @@ import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,13 +32,17 @@ public class AIRecommendationService {
 
     // 추천 캐시 (메모리에 일시적으로 저장)
     private final Map<Long, CachedRecommendation> recommendationCache = new HashMap<>();
-    private static final long CACHE_EXPIRY_MINUTES = 5; // 5분으로 단축
+    private static final long CACHE_EXPIRY_MINUTES = 3; // 3분으로 단축 (실시간 반영)
 
     // 마지막 모델 학습 시간 추적
     private LocalDateTime lastModelTrainingTime = null;
     private LocalDateTime lastCarDataUpdateTime = null;
-
     private boolean aiModelTrained = false; // AI 모델 학습 여부 추적
+
+    // 🔄 실시간 학습 상태 관리
+    private final AtomicBoolean isTraining = new AtomicBoolean(false);
+    private LocalDateTime lastFavoriteChangeTime = null;
+    private int consecutiveTrainingCount = 0;
 
     /**
      * 애플리케이션 시작 시 AI 모델 학습
@@ -49,67 +54,99 @@ public class AIRecommendationService {
     }
 
     /**
-     * 비동기적으로 AI 모델 학습 (개선된 버전)
+     * 🚀 실시간 비동기 AI 모델 학습 (즉시 반응)
      */
     @Async
     public void trainAIModelAsync() {
-        try {
-            log.info("개선된 AI 모델 학습 시작...");
-
-            // 모든 차량 데이터 조회
-            List<Car> allCars = carRepository.findAll();
-
-            if (allCars.isEmpty()) {
-                log.warn("학습할 차량 데이터가 없습니다.");
-                return;
-            }
-
-            // 데이터 품질 검증 및 필터링
-            List<Car> validCars = allCars.stream()
-                    .filter(this::isValidCarData)
-                    .collect(Collectors.toList());
-
-            log.info("전체 차량: {}, 유효한 차량: {}", allCars.size(), validCars.size());
-
-            // 차량 데이터를 AI 서비스 형식으로 변환
-            List<Object> carsData = validCars.stream()
-                    .map(this::convertCarToEnhancedAIFormat)
-                    .collect(Collectors.toList());
-
-            // 즐겨찾기 데이터 수집
-            List<Map<String, Object>> favoritesData = favoriteRepository.findAll().stream()
-                    .map(this::convertFavoriteToAIFormat)
-                    .collect(Collectors.toList());
-
-            // 사용자 행동 데이터 수집 (UserBehaviorService가 있는 경우)
-            Map<String, Object> userBehaviors = new HashMap<>();
+        // 중복 학습 방지
+        if (isTraining.compareAndSet(false, true)) {
             try {
-                if (userBehaviorService != null) {
-                    userBehaviors = userBehaviorService.getAllUserBehaviors();
+                long startTime = System.currentTimeMillis();
+
+                log.info("🤖 실시간 AI 모델 학습 시작...");
+
+                // 모든 차량 데이터 조회
+                List<Car> allCars = carRepository.findAll();
+                if (allCars.isEmpty()) {
+                    log.warn("⚠️ 학습할 차량 데이터가 없습니다.");
+                    return;
                 }
+
+                // 즐겨찾기 데이터 조회
+                List<Favorite> allFavorites = favoriteRepository.findAll();
+                if (allFavorites.isEmpty()) {
+                    log.warn("⚠️ 즐겨찾기 데이터가 없어 기본 모델로 학습합니다.");
+                }
+
+                // 데이터 품질 검증 및 필터링
+                List<Car> validCars = allCars.stream()
+                        .filter(this::isValidCarData)
+                        .collect(Collectors.toList());
+
+                log.info("📊 학습 데이터: 전체 차량 {}, 유효 차량 {}, 즐겨찾기 {}",
+                        allCars.size(), validCars.size(), allFavorites.size());
+
+                // 차량 데이터를 AI 서비스 형식으로 변환
+                List<Object> carsData = validCars.stream()
+                        .map(this::convertCarToEnhancedAIFormat)
+                        .collect(Collectors.toList());
+
+                // 즐겨찾기 데이터 변환
+                List<Map<String, Object>> favoritesData = allFavorites.stream()
+                        .map(this::convertFavoriteToAIFormat)
+                        .collect(Collectors.toList());
+
+                // 사용자 행동 데이터 수집 (옵션)
+                Map<String, Object> userBehaviors = new HashMap<>();
+                try {
+                    if (userBehaviorService != null) {
+                        userBehaviors = userBehaviorService.getAllUserBehaviors();
+                    }
+                } catch (Exception e) {
+                    log.debug("사용자 행동 데이터 수집 실패 (계속 진행): {}", e.getMessage());
+                }
+
+                // 🔥 AI 서비스에 즉시 학습 요청
+                boolean success = aiServiceClient.trainModelWithFavorites(carsData, favoritesData, userBehaviors);
+
+                long duration = System.currentTimeMillis() - startTime;
+
+                if (success) {
+                    lastModelTrainingTime = LocalDateTime.now();
+                    lastCarDataUpdateTime = LocalDateTime.now();
+                    aiModelTrained = true;
+                    consecutiveTrainingCount++;
+
+                    // 학습 완료 후 모든 캐시 삭제 (새로운 모델 반영)
+                    clearAllCache();
+
+                    log.info("✅ 실시간 AI 모델 학습 완료!");
+                    log.info("   📈 소요시간: {}ms", duration);
+                    log.info("   📊 학습 데이터: 차량 {}개, 즐겨찾기 {}개", validCars.size(), favoritesData.size());
+                    log.info("   🔄 누적 학습 횟수: {}", consecutiveTrainingCount);
+
+                    // 학습 성과 알림
+                    if (allFavorites.size() >= 10) {
+                        log.info("🎯 충분한 즐겨찾기 데이터로 고품질 개인화 추천이 가능합니다!");
+                    } else if (allFavorites.size() >= 5) {
+                        log.info("👍 기본 개인화 추천이 활성화되었습니다.");
+                    } else {
+                        log.info("🌟 개인화 추천이 시작되었습니다. 더 많은 즐겨찾기로 품질이 향상됩니다!");
+                    }
+
+                } else {
+                    log.error("❌ 실시간 AI 모델 학습 실패 (소요시간: {}ms)", duration);
+                    aiModelTrained = false;
+                }
+
             } catch (Exception e) {
-                log.warn("사용자 행동 데이터 수집 중 오류 (계속 진행): {}", e.getMessage());
-            }
-
-            // AI 서비스에 학습 요청
-            boolean success = aiServiceClient.trainModelWithFavorites(carsData, favoritesData, userBehaviors);
-
-            if (success) {
-                log.info("AI 모델 학습 완료: {} 개의 차량 데이터, {} 개의 즐겨찾기 데이터로 학습",
-                        validCars.size(), favoritesData.size());
-                lastModelTrainingTime = LocalDateTime.now();
-                lastCarDataUpdateTime = LocalDateTime.now();
-                aiModelTrained = true; // AI 모델 학습 완료 상태 업데이트
-                // 모델 재학습 시 모든 캐시 삭제
-                clearAllCache();
-            } else {
-                log.error("AI 모델 학습 실패");
+                log.error("💥 실시간 AI 모델 학습 중 치명적 오류: {}", e.getMessage(), e);
                 aiModelTrained = false;
+            } finally {
+                isTraining.set(false); // 학습 상태 해제
             }
-
-        } catch (Exception e) {
-            log.error("AI 모델 학습 중 오류 발생: {}", e.getMessage(), e);
-            aiModelTrained = false;
+        } else {
+            log.info("⏳ AI 모델이 이미 학습 중입니다. 중복 학습을 방지합니다.");
         }
     }
 
@@ -125,12 +162,13 @@ public class AIRecommendationService {
     }
 
     /**
-     * 매일 새벽 2시에 AI 모델 재학습
+     * 정기 AI 모델 재학습 (야간 스케줄링)
      */
-    @Scheduled(cron = "0 0 2 * * *")
+    @Scheduled(cron = "0 0 2 * * *") // 매일 새벽 2시
     @Async
     public void scheduleModelRetraining() {
-        log.info("스케줄된 AI 모델 재학습 시작");
+        log.info("🌙 정기 스케줄된 AI 모델 재학습 시작");
+        consecutiveTrainingCount = 0; // 카운터 리셋
         trainAIModelAsync();
     }
 
@@ -148,7 +186,7 @@ public class AIRecommendationService {
         try {
             // 강제 새로고침이거나 캐시가 만료된 경우
             if (forceRefresh || shouldRefreshRecommendations(userId)) {
-                log.info("사용자 {}의 추천을 새로 생성합니다. (강제새로고침: {})", userId, forceRefresh);
+                log.info("🔄 사용자 {}의 추천을 새로 생성합니다. (강제새로고침: {})", userId, forceRefresh);
                 clearUserCache(userId);
                 return generateFreshRecommendations(userId, topK);
             }
@@ -156,7 +194,7 @@ public class AIRecommendationService {
             // 캐시 확인
             CachedRecommendation cached = recommendationCache.get(userId);
             if (cached != null && !cached.isExpired()) {
-                log.info("캐시된 추천 결과 반환 for user: {}", userId);
+                log.debug("📋 캐시된 추천 결과 반환 for user: {}", userId);
                 return cached.getRecommendations().stream()
                         .limit(topK)
                         .collect(Collectors.toList());
@@ -166,7 +204,7 @@ public class AIRecommendationService {
             return generateFreshRecommendations(userId, topK);
 
         } catch (Exception e) {
-            log.error("사용자 {} 추천 생성 중 오류: {}", userId, e.getMessage(), e);
+            log.error("💥 사용자 {} 추천 생성 중 오류: {}", userId, e.getMessage(), e);
             return getEnhancedPopularCarsRecommendation(topK);
         }
     }
@@ -182,14 +220,11 @@ public class AIRecommendationService {
         List<Favorite> favorites = favoriteRepository.findByUser(user);
 
         if (favorites.isEmpty()) {
-            log.info("사용자 {}의 즐겨찾기가 없어 인기 차량 추천을 제공합니다.", userId);
+            log.info("📋 사용자 {}의 즐겨찾기가 없어 인기 차량 추천을 제공합니다.", userId);
             List<RecommendedCar> recommendations = getEnhancedPopularCarsRecommendation(topK);
             cacheRecommendations(userId, recommendations);
             return recommendations;
         }
-
-        // 데이터 변경 확인 후 필요시 모델 재학습
-        checkAndUpdateModelIfNeeded();
 
         // 즐겨찾기 분석
         FavoriteAnalysis analysis = analyzeFavoritePatterns(favorites);
@@ -202,7 +237,7 @@ public class AIRecommendationService {
         // 가중치가 적용된 즐겨찾기 리스트
         List<Long> weightedFavoriteIds = getWeightedFavoriteIds(favorites);
 
-        // AI 서비스에 추천 요청
+        // 🤖 AI 서비스에 추천 요청
         AIServiceClient.AIRecommendationResponse response = aiServiceClient.getRecommendations(
                 weightedFavoriteIds, favoriteCarIds, Math.max(topK * 3, 30) // 더 많은 후보 요청
         );
@@ -210,7 +245,7 @@ public class AIRecommendationService {
         List<RecommendedCar> recommendations;
 
         if (response == null || response.getRecommendations().isEmpty()) {
-            log.warn("AI 추천 결과가 없어 하이브리드 추천을 제공합니다.");
+            log.warn("⚠️ AI 추천 결과가 없어 하이브리드 추천을 제공합니다.");
             recommendations = getHybridRecommendation(analysis, favoriteCarIds, topK);
         } else {
             // AI 추천 결과를 RecommendedCar 객체로 변환
@@ -229,6 +264,7 @@ public class AIRecommendationService {
         // 캐시에 저장
         cacheRecommendations(userId, recommendations);
 
+        log.info("✨ 사용자 {} 추천 생성 완료: {}개", userId, recommendations.size());
         return recommendations.stream().limit(topK).collect(Collectors.toList());
     }
 
@@ -248,12 +284,19 @@ public class AIRecommendationService {
             return true;
         }
 
+        // AI 모델이 최근에 재학습되었으면 새로고침 필요
+        if (lastModelTrainingTime != null &&
+                cached.getTimestamp().isBefore(lastModelTrainingTime)) {
+            log.info("🔄 AI 모델 재학습으로 인한 캐시 갱신 필요 - 사용자: {}", userId);
+            return true;
+        }
+
         // 사용자의 즐겨찾기가 변경되었는지 확인
         User user = userRepository.findById(userId).orElse(null);
         if (user != null) {
             List<Favorite> currentFavorites = favoriteRepository.findByUser(user);
             if (currentFavorites.size() != cached.getFavoriteCount()) {
-                log.info("사용자 {}의 즐겨찾기 개수가 변경됨: {} -> {}",
+                log.info("📝 사용자 {}의 즐겨찾기 개수 변경: {} -> {}",
                         userId, cached.getFavoriteCount(), currentFavorites.size());
                 return true;
             }
@@ -265,7 +308,7 @@ public class AIRecommendationService {
                     .collect(Collectors.toSet());
 
             if (!cachedFavoriteIds.equals(currentFavoriteIds)) {
-                log.info("사용자 {}의 즐겨찾기 목록이 변경됨", userId);
+                log.info("🔄 사용자 {}의 즐겨찾기 목록 변경됨", userId);
                 return true;
             }
         }
@@ -274,43 +317,29 @@ public class AIRecommendationService {
     }
 
     /**
-     * 데이터 변경 확인 후 모델 업데이트
-     */
-    private void checkAndUpdateModelIfNeeded() {
-        // 새로운 차량이 추가되었는지 확인 (간단한 방식)
-        List<Car> recentCars = carRepository.findAll().stream()
-                .filter(car -> lastCarDataUpdateTime == null ||
-                        (car.getCreatedAt() != null && car.getCreatedAt().isAfter(lastCarDataUpdateTime)))
-                .collect(Collectors.toList());
-
-        if (!recentCars.isEmpty()) {
-            log.info("새로운 차량 {}대가 추가되어 모델을 업데이트합니다.", recentCars.size());
-            trainAIModelAsync();
-        }
-    }
-
-    /**
      * 특정 사용자 캐시 삭제
      */
     public void clearUserCache(Long userId) {
         recommendationCache.remove(userId);
-        log.info("사용자 {} 캐시 삭제됨", userId);
+        log.info("🗑️ 사용자 {} 캐시 삭제됨", userId);
     }
 
     /**
      * 모든 캐시 삭제
      */
     public void clearAllCache() {
+        int cacheSize = recommendationCache.size();
         recommendationCache.clear();
-        log.info("모든 추천 캐시 삭제됨");
+        log.info("🧹 모든 추천 캐시 삭제됨 ({}개)", cacheSize);
     }
 
     /**
-     * 사용자 즐겨찾기 변경 시 호출 (FavoriteService에서 호출)
+     * 🔄 사용자 즐겨찾기 변경 시 호출 (실시간 반영)
      */
     public void onFavoriteChanged(Long userId) {
         clearUserCache(userId);
-        log.info("사용자 {}의 즐겨찾기 변경으로 캐시 무효화", userId);
+        lastFavoriteChangeTime = LocalDateTime.now();
+        log.info("⚡ 사용자 {}의 즐겨찾기 변경으로 캐시 무효화", userId);
     }
 
     /**
@@ -362,9 +391,6 @@ public class AIRecommendationService {
             return Map.of("error", "선호도 분석 중 오류가 발생했습니다.");
         }
     }
-
-    // 이하 기존 메서드들 (analyzeFavoritePatterns, getWeightedFavoriteIds 등)은 동일하므로 생략...
-    // [기존 메서드들을 여기에 포함]
 
     /**
      * 즐겨찾기 패턴 분석
@@ -700,6 +726,62 @@ public class AIRecommendationService {
         return aiServiceClient.isAIServiceHealthy();
     }
 
+    /**
+     * AI 모델 학습 상태 확인
+     */
+    public boolean isAIModelTrained() {
+        return aiModelTrained;
+    }
+
+    /**
+     * 🔍 실시간 학습 상태 정보
+     */
+    public Map<String, Object> getRealTimeTrainingStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        status.put("isCurrentlyTraining", isTraining.get());
+        status.put("lastTrainingTime", lastModelTrainingTime != null ? lastModelTrainingTime.toString() : null);
+        status.put("lastFavoriteChangeTime", lastFavoriteChangeTime != null ? lastFavoriteChangeTime.toString() : null);
+        status.put("consecutiveTrainingCount", consecutiveTrainingCount);
+        status.put("modelTrained", aiModelTrained);
+        status.put("cacheSize", recommendationCache.size());
+
+        long totalFavorites = favoriteRepository.count();
+        status.put("totalFavorites", totalFavorites);
+        status.put("readyForTraining", totalFavorites > 0);
+
+        return status;
+    }
+
+    /**
+     * AI 추천 시스템 상태 정보
+     */
+    public Map<String, Object> getAISystemStatus() {
+        Map<String, Object> status = new HashMap<>();
+
+        status.put("aiServiceConnected", aiServiceClient.isAIServiceHealthy());
+        status.put("aiModelTrained", aiModelTrained);
+        status.put("lastTrainingTime", lastModelTrainingTime != null ? lastModelTrainingTime.toString() : null);
+        status.put("isCurrentlyTraining", isTraining.get());
+        status.put("consecutiveTrainingCount", consecutiveTrainingCount);
+
+        long totalCars = carRepository.count();
+        long totalFavorites = favoriteRepository.count();
+        long totalUsers = userRepository.count();
+
+        status.put("totalCars", totalCars);
+        status.put("totalFavorites", totalFavorites);
+        status.put("totalUsers", totalUsers);
+        status.put("cacheSize", recommendationCache.size());
+
+        // 추천 가능 여부
+        status.put("recommendationReady", totalCars > 0);
+        status.put("personalizedRecommendationReady", aiModelTrained && totalFavorites > 0);
+        status.put("realTimeTrainingEnabled", true);
+
+        return status;
+    }
+
     // 내부 클래스들
     private static class FavoriteAnalysis {
         private double avgPrice;
@@ -822,38 +904,5 @@ public class AIRecommendationService {
         public int hashCode() {
             return Objects.hash(car.getId());
         }
-    }
-
-    /**
-     * AI 모델 학습 상태 확인
-     */
-    public boolean isAIModelTrained() {
-        return aiModelTrained;
-    }
-
-    /**
-     * AI 추천 시스템 상태 정보
-     */
-    public Map<String, Object> getAISystemStatus() {
-        Map<String, Object> status = new HashMap<>();
-
-        status.put("aiServiceConnected", aiServiceClient.isAIServiceHealthy());
-        status.put("aiModelTrained", aiModelTrained);
-        status.put("lastTrainingTime", lastModelTrainingTime != null ? lastModelTrainingTime.toString() : null);
-
-        long totalCars = carRepository.count();
-        long totalFavorites = favoriteRepository.count();
-        long totalUsers = userRepository.count();
-
-        status.put("totalCars", totalCars);
-        status.put("totalFavorites", totalFavorites);
-        status.put("totalUsers", totalUsers);
-        status.put("cacheSize", recommendationCache.size());
-
-        // 추천 가능 여부
-        status.put("recommendationReady", totalCars > 0);
-        status.put("personalizedRecommendationReady", aiModelTrained && totalFavorites > 0);
-
-        return status;
     }
 }
