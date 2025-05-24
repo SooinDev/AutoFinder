@@ -257,46 +257,46 @@ npm start
 ## 📚 API 문서
 
 ### 🔐 인증 API
-```http
-POST /api/auth/login
-POST /api/auth/register
-GET  /api/auth/me
-```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/login` | 사용자 로그인 |
+| `POST` | `/api/auth/register` | 회원가입 |
+| `GET` | `/api/auth/me` | 현재 사용자 정보 |
 
 ### 🚗 차량 API
-```http
-GET    /api/cars              # 차량 목록 조회
-GET    /api/cars/{id}         # 차량 상세 조회
-GET    /api/cars/{id}/similar # 유사 차량 조회
-```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/cars` | 차량 목록 조회 (페이징, 필터링) |
+| `GET` | `/api/cars/{id}` | 차량 상세 정보 |
+| `GET` | `/api/cars/{id}/similar` | 유사 차량 조회 |
 
 ### 💝 즐겨찾기 API
-```http
-POST   /api/favorites/{carId}    # 즐겨찾기 추가 (즉시 AI 학습)
-DELETE /api/favorites/{carId}    # 즐겨찾기 삭제 (즉시 AI 학습)
-GET    /api/favorites            # 즐겨찾기 목록
-```
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/favorites/{carId}` | 즐겨찾기 추가 (즉시 AI 학습) |
+| `DELETE` | `/api/favorites/{carId}` | 즐겨찾기 삭제 (즉시 AI 학습) |
+| `GET` | `/api/favorites` | 사용자 즐겨찾기 목록 |
 
 ### 🤖 AI 추천 API
-```http
-GET    /api/ai/recommend                # AI 기반 추천 차량
-GET    /api/ai/recommend/refresh        # 강제 새로고침
-GET    /api/ai/debug/me                 # 추천 디버그 정보
-```
 
-### 📊 시스템 모니터링 API
-```http
-GET    /api/system/status               # 전체 시스템 상태
-GET    /api/system/realtime-training    # 실시간 학습 상태
-GET    /api/system/ai/training-stats    # AI 학습 통계
-POST   /api/system/ai/retrain           # 수동 AI 재학습
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/ai/recommend` | AI 기반 개인화 추천 |
+| `GET` | `/api/ai/recommend/refresh` | 추천 모델 강제 새로고침 |
+| `GET` | `/api/ai/debug/me` | 추천 알고리즘 디버그 정보 |
 
-### 📈 분석 API
-```http
-GET    /api/analytics/price-by-year/{model}  # 모델별 가격 통계
-GET    /api/behavior/me                      # 내 행동 분석
-```
+### 📊 분석 및 모니터링 API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/analytics/price-by-year/{model}` | 모델별 연도별 가격 통계 |
+| `GET` | `/api/behavior/me` | 개인 행동 패턴 분석 |
+| `GET` | `/api/system/status` | 전체 시스템 상태 |
+| `GET` | `/api/system/ai/training-stats` | AI 학습 통계 |
+| `POST` | `/api/system/ai/retrain` | 수동 AI 재학습 |
 
 ## 🗄 데이터베이스 스키마
 
