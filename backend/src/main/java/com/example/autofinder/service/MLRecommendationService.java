@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class DeepLearningRecommendationService {
+public class MLRecommendationService {
 
     private final AIServiceClient aiServiceClient;
     private final CarRepository carRepository;

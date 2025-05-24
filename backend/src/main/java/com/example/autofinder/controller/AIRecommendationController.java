@@ -1,6 +1,6 @@
 package com.example.autofinder.controller;
 
-import com.example.autofinder.service.DeepLearningRecommendationService;
+import com.example.autofinder.service.MLRecommendationService;
 import com.example.autofinder.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +14,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AIRecommendationController {
 
-    private final DeepLearningRecommendationService deepLearningRecommendationService;
+    private final MLRecommendationService deepLearningRecommendationService;
     private final JwtUtil jwtUtil;
 
     /**
@@ -34,7 +34,7 @@ public class AIRecommendationController {
             }
 
             // 스마트 추천 호출 (딥러닝 + 폴백)
-            List<DeepLearningRecommendationService.RecommendedCar> recommendations =
+            List<MLRecommendationService.RecommendedCar> recommendations =
                     deepLearningRecommendationService.getSmartRecommendations(userId, limit);
 
             // 디버그 정보 포함
@@ -73,7 +73,7 @@ public class AIRecommendationController {
             }
 
             // 강제로 딥러닝 사용 (테스트 목적)
-            List<DeepLearningRecommendationService.RecommendedCar> recommendations =
+            List<MLRecommendationService.RecommendedCar> recommendations =
                     deepLearningRecommendationService.getSmartRecommendations(userId, limit);
 
             return ResponseEntity.ok(Map.of(
@@ -109,7 +109,7 @@ public class AIRecommendationController {
             // 캐시 무효화 후 새로운 추천 생성
             deepLearningRecommendationService.onFavoriteChanged(userId);
 
-            List<DeepLearningRecommendationService.RecommendedCar> recommendations =
+            List<MLRecommendationService.RecommendedCar> recommendations =
                     deepLearningRecommendationService.getSmartRecommendations(userId, limit);
 
             return ResponseEntity.ok(Map.of(
