@@ -248,6 +248,12 @@ python app_ml.py
 python crawler.py
 ```
 
+### 9. 프론트엔드 실행
+```bash
+# 프론트엔드 실행
+npm start
+```
+
 ## 📚 API 문서
 
 ### 🔐 인증 API
