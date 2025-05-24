@@ -192,7 +192,7 @@ mysql --version
 
 ### 2. 프로젝트 클론
 ```bash
-git clone https://github.com/yourusername/autofinder.git
+git clone https://github.com/SooinDev/autofinder.git
 cd autofinder
 ```
 
