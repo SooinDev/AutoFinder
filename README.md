@@ -326,66 +326,66 @@ UserBehaviors (사용자 행동)
 ```
 autofinder-backend/
 ├── src/main/java/com/example/autofinder/
-│   ├── AutofinderApplication.java          # 🚀 Spring Boot 메인 애플리케이션
+│   ├── AutofinderApplication.java          # Spring Boot 메인 애플리케이션
 │   │
-│   ├── config/                             # ⚙️ 설정 클래스들
-│   │   ├── SecurityConfig.java             # 🔐 Spring Security 설정
-│   │   ├── CorsConfig.java                 # 🌐 CORS 설정
-│   │   ├── JacksonConfig.java              # 📄 JSON 직렬화 설정
-│   │   └── RestTemplateConfig.java         # 🔗 REST 클라이언트 설정
+│   ├── config/                             # 설정 클래스들
+│   │   ├── SecurityConfig.java             # Spring Security 설정
+│   │   ├── CorsConfig.java                 # CORS 설정
+│   │   ├── JacksonConfig.java              # JSON 직렬화 설정
+│   │   └── RestTemplateConfig.java         # REST 클라이언트 설정
 │   │
-│   ├── controller/                         # 🎮 REST API 컨트롤러
-│   │   ├── AuthController.java             # 🔑 인증/회원가입 API
-│   │   ├── CarController.java              # 🚗 차량 CRUD API
-│   │   ├── FavoriteController.java         # ❤️ 즐겨찾기 API
-│   │   ├── SimilarCarController.java       # 🔍 유사차량 검색 API
-│   │   ├── AnalyticsController.java        # 📊 통계/분석 API
-│   │   ├── AIRecommendationController.java # 🤖 AI 추천 API
-│   │   ├── UserBehaviorController.java     # 👤 사용자 행동 추적 API
-│   │   └── SystemStatusController.java     # 📈 시스템 상태 모니터링 API
+│   ├── controller/                         # REST API 컨트롤러
+│   │   ├── AuthController.java             # 인증/회원가입 API
+│   │   ├── CarController.java              # 차량 CRUD API
+│   │   ├── FavoriteController.java         # 즐겨찾기 API
+│   │   ├── SimilarCarController.java       # 유사차량 검색 API
+│   │   ├── AnalyticsController.java        # 통계/분석 API
+│   │   ├── AIRecommendationController.java # AI 추천 API
+│   │   ├── UserBehaviorController.java     # 사용자 행동 추적 API
+│   │   └── SystemStatusController.java     # 시스템 상태 모니터링 API
 │   │
-│   ├── model/                              # 📋 JPA 엔티티 클래스
-│   │   ├── Car.java                        # 🚗 차량 정보 엔티티
-│   │   ├── User.java                       # 👤 사용자 엔티티
-│   │   ├── Role.java                       # 🎭 사용자 권한 enum
-│   │   ├── Favorite.java                   # ❤️ 즐겨찾기 엔티티
-│   │   └── UserBehavior.java               # 📊 사용자 행동 데이터 엔티티
+│   ├── model/                              # JPA 엔티티 클래스
+│   │   ├── Car.java                        # 차량 정보 엔티티
+│   │   ├── User.java                       # 사용자 엔티티
+│   │   ├── Role.java                       # 사용자 권한 enum
+│   │   ├── Favorite.java                   # 즐겨찾기 엔티티
+│   │   └── UserBehavior.java               # 사용자 행동 데이터 엔티티
 │   │
-│   ├── repository/                         # 🗄️ 데이터 접근 레이어
-│   │   ├── CarRepository.java              # 🚗 차량 데이터 접근
-│   │   ├── UserRepository.java             # 👤 사용자 데이터 접근
-│   │   ├── FavoriteRepository.java         # ❤️ 즐겨찾기 데이터 접근
-│   │   └── UserBehaviorRepository.java     # 📊 행동 데이터 접근
+│   ├── repository/                         # 데이터 접근 레이어
+│   │   ├── CarRepository.java              # 차량 데이터 접근
+│   │   ├── UserRepository.java             # 사용자 데이터 접근
+│   │   ├── FavoriteRepository.java         # 즐겨찾기 데이터 접근
+│   │   └── UserBehaviorRepository.java     # 행동 데이터 접근
 │   │
-│   ├── service/                            # 🏢 비즈니스 로직 레이어
-│   │   ├── CarService.java                 # 🚗 차량 관리 서비스
-│   │   ├── UserService.java                # 👤 사용자 관리 서비스
-│   │   ├── FavoriteService.java            # ❤️ 즐겨찾기 서비스 (실시간 AI 트리거)
-│   │   ├── SimilarCarService.java          # 🔍 유사차량 검색 서비스
-│   │   ├── AnalyticsService.java           # 📊 차량 통계 분석 서비스
-│   │   ├── AIRecommendationService.java    # 🤖 기존 AI 추천 서비스
-│   │   ├── MLRecommendationService.java    # 🧠 딥러닝 추천 서비스
-│   │   ├── AIServiceClient.java            # 🔗 외부 AI 서버 클라이언트
-│   │   └── UserBehaviorService.java        # 📈 사용자 행동 분석 서비스
+│   ├── service/                            # 비즈니스 로직 레이어
+│   │   ├── CarService.java                 # 차량 관리 서비스
+│   │   ├── UserService.java                # 사용자 관리 서비스
+│   │   ├── FavoriteService.java            # 즐겨찾기 서비스 (실시간 AI 트리거)
+│   │   ├── SimilarCarService.java          # 유사차량 검색 서비스
+│   │   ├── AnalyticsService.java           # 차량 통계 분석 서비스
+│   │   ├── AIRecommendationService.java    # 기존 AI 추천 서비스
+│   │   ├── MLRecommendationService.java    # 머신러닝 추천 서비스
+│   │   ├── AIServiceClient.java            # 외부 AI 서버 클라이언트
+│   │   └── UserBehaviorService.java        # 사용자 행동 분석 서비스
 │   │
-│   ├── security/                           # 🛡️ 보안 관련 클래스
-│   │   ├── CustomUserDetails.java          # 👤 사용자 상세 정보
-│   │   ├── UserDetailsServiceImpl.java     # 🔐 사용자 인증 서비스
-│   │   └── JwtAuthenticationFilter.java    # 🎫 JWT 토큰 필터
+│   ├── security/                           # 보안 관련 클래스
+│   │   ├── CustomUserDetails.java          # 사용자 상세 정보
+│   │   ├── UserDetailsServiceImpl.java     # 사용자 인증 서비스
+│   │   └── JwtAuthenticationFilter.java    # JWT 토큰 필터
 │   │
-│   ├── util/                               # 🛠️ 유틸리티 클래스
-│   │   └── JwtUtil.java                    # 🎫 JWT 토큰 생성/검증
+│   ├── util/                               # 유틸리티 클래스
+│   │   └── JwtUtil.java                    # JWT 토큰 생성/검증
 │   │
-│   └── dto/                                # 📦 데이터 전송 객체
-│       └── LoginRequest.java               # 🔑 로그인 요청 DTO
+│   └── dto/                                # 데이터 전송 객체
+│       └── LoginRequest.java               # 로그인 요청 DTO
 │
 ├── src/main/resources/
-│   ├── application.properties              # 🔧 애플리케이션 설정
-│   └── schema.sql                          # 🗃️ 데이터베이스 스키마
+│   ├── application.properties              # 애플리케이션 설정
+│   └── schema.sql                          # 데이터베이스 스키마
 │
-├── crawler.py                              # 🕷️ 차량 데이터 크롤링 스크립트
-├── pom.xml                                 # 📦 Maven 의존성 관리
-└── README.md                               # 📖 프로젝트 문서
+├── crawler.py                              # 차량 데이터 크롤링 스크립트
+├── pom.xml                                 # Maven 의존성 관리
+└── README.md                               # 프로젝트 문서
 ```
 ```
 autofinder-frontend/
