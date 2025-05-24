@@ -414,7 +414,7 @@ flake8 ml-service/
 
 ## 📞 연락처
 
-- **개발자**: [SooinDev]
+- **개발자**: SooinDev
 - **이메일**: alwayswithsound@gmail.com
 - **GitHub**: [@SooinDev](https://github.com/SooinDev)
 - **이슈 트래커**: [GitHub Issues](https://github.com/SooinDev/autofinder/issues)
