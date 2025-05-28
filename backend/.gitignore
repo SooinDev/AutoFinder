@@ -38,4 +38,7 @@ application.yml
 frontend/.vscode/
 
 # 크롤링 관련
-scripts/crawler.py
+scripts/crawler.pyvenv/
+env/
+__pycache__/
+*.pyc
