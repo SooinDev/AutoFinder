@@ -147,7 +147,10 @@ const Header = ({ userId, username, setUserId, setUsername, setFavorites }) => {
                             <Link to="/cars"
                                   className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white inline-flex items-center px-1 pt-1 text-sm font-medium">
                                 차량 검색
-
+                            </Link>
+                            <Link to="/compare"
+                                  className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white inline-flex items-center px-1 pt-1 text-sm font-medium">
+                                차량 비교
                             </Link>
                             <Link to="/analysis"
                                   className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white inline-flex items-center px-1 pt-1 text-sm font-medium">
@@ -159,9 +162,9 @@ const Header = ({ userId, username, setUserId, setUsername, setFavorites }) => {
                                           className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white inline-flex items-center px-1 pt-1 text-sm font-medium">
                                         즐겨찾기
                                     </Link>
-                                    <Link to="/notifications"
+                                    <Link to="/ai-recommendations"
                                           className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white inline-flex items-center px-1 pt-1 text-sm font-medium">
-                                        알림
+                                        AI 추천
                                     </Link>
                                 </>
                             )}
@@ -251,6 +254,20 @@ const Header = ({ userId, username, setUserId, setUsername, setFavorites }) => {
                         >
                             차량 검색
                         </Link>
+                        <Link
+                            to="/compare"
+                            className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-800 dark:hover:text-white"
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            차량 비교
+                        </Link>
+                        <Link
+                            to="/analysis"
+                            className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-800 dark:hover:text-white"
+                            onClick={() => setMobileMenuOpen(false)}
+                        >
+                            시장 분석
+                        </Link>
                         {token && (
                             <>
                                 <Link
@@ -261,11 +278,11 @@ const Header = ({ userId, username, setUserId, setUsername, setFavorites }) => {
                                     즐겨찾기
                                 </Link>
                                 <Link
-                                    to="/notifications"
+                                    to="/ai-recommendations"
                                     className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-800 dark:hover:text-white"
                                     onClick={() => setMobileMenuOpen(false)}
                                 >
-                                    알림
+                                    AI 추천
                                 </Link>
                             </>
                         )}
