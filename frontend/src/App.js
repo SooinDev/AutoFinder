@@ -11,7 +11,8 @@ import RegisterPage from "./pages/RegisterPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ModelAnalysisPage from "./pages/ModelAnalysisPage";
 import FavoritesPage from "./pages/FavoritesPage";
-import AIRecommendationsPage from "./pages/AIRecommendationsPage"; // 새로 추가
+import AIRecommendationsPage from "./pages/AIRecommendationsPage";
+import CarComparePage from "./pages/CarComparePage"; // 차량 비교 페이지 import
 import { ThemeProvider } from "./context/ThemeContext";
 import { toggleFavorite } from "./api/services";
 import "./styles/global.css";
@@ -115,7 +116,7 @@ function App() {
                                 setFavorites={setFavorites}
                             />
                         </Route>
-                        {/* AI 추천 페이지 라우트 추가 */}
+                        {/* AI 추천 페이지 라우트 */}
                         <Route path="/ai-recommendations">
                             <AIRecommendationsPage
                                 userId={userId}
@@ -124,6 +125,15 @@ function App() {
                                 onToggleFavorite={handleToggleFavorite}
                             />
                         </Route>
+                        {/* 차량 비교 페이지 라우트 - EXACT 속성 제거 */}
+                        <Route path="/compare">
+                            <CarComparePage
+                                userId={userId}
+                                favorites={favorites}
+                                onToggleFavorite={handleToggleFavorite}
+                            />
+                        </Route>
+                        {/* 404 페이지는 가장 마지막에 */}
                         <Route path="*">
                             <NotFoundPage/>
                         </Route>
