@@ -1,4 +1,4 @@
-# app_ml.py (기존 app.py 대체)
+# app_ml.py - 응답 형식 수정
 from flask import Flask, request, jsonify
 import pandas as pd
 import numpy as np
@@ -87,22 +87,18 @@ def recommend():
         exclude_ids = data.get('exclude_ids', [])
         top_k = data.get('top_k', 10)
 
-        logger.info(f"ML 추천 요청: 사용자 {user_id}")
+        logger.info(f"ML 추천 요청: 사용자 {user_id}, 후보차량 {len(candidate_cars)}개")
 
         if not ml_recommender.is_trained:
             # 모델이 학습되지 않은 경우 로드 시도
             if os.path.exists(MODEL_PATH):
-                ml_recommender.load_model(MODEL_PATH)
+                success = ml_recommender.load_model(MODEL_PATH)
+                if not success:
+                    return create_empty_response("모델 로드 실패")
             else:
-                return jsonify({
-                    "recommendations": [],
-                    "total_count": 0,
-                    "model_type": "not_trained",
-                    "message": "모델이 학습되지 않았습니다.",
-                    "timestamp": datetime.now().isoformat()
-                })
+                return create_empty_response("모델이 학습되지 않았습니다")
 
-        # 후보 차량이 제공된 경우
+        # 후보 차량이 제공된 경우 (딥러닝 추천)
         if candidate_cars and user_id:
             cars_df = pd.DataFrame(candidate_cars)
 
@@ -117,35 +113,70 @@ def recommend():
                 exclude_ids=exclude_ids,
                 top_k=top_k
             )
-        else:
-            # 기본 추천
-            recommendations = []
 
-        return jsonify({
+            logger.info(f"ML 추천 생성 완료: {len(recommendations)}개")
+
+        else:
+            # 기존 방식 (즐겨찾기 기반)
+            logger.info("기존 방식으로 추천 처리")
+            recommendations = create_legacy_recommendations(favorite_car_ids, exclude_ids, top_k)
+
+        # ✅ Java 백엔드가 기대하는 정확한 형식으로 응답
+        response = {
             "recommendations": recommendations,
-            "total_count": len(recommendations),
-            "model_type": "machine_learning",
-            "algorithm": "gradient_boosting",
+            "totalCount": len(recommendations),  # Java에서 getTotalCount() 사용
             "timestamp": datetime.now().isoformat()
-        })
+        }
+
+        logger.info(f"응답 전송: {len(recommendations)}개 추천")
+        return jsonify(response)
 
     except Exception as e:
         logger.error(f"ML 추천 중 오류: {str(e)}")
         logger.error(traceback.format_exc())
 
-        return jsonify({
-            "recommendations": [],
-            "total_count": 0,
-            "model_type": "error_fallback",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }), 200
+        # 에러 발생 시에도 빈 추천 리스트 반환 (Java 에러 방지)
+        return create_empty_response(f"오류: {str(e)}")
+
+def create_empty_response(message="추천 결과 없음"):
+    """빈 응답 생성"""
+    return jsonify({
+        "recommendations": [],
+        "totalCount": 0,
+        "timestamp": datetime.now().isoformat(),
+        "message": message
+    })
+
+def create_legacy_recommendations(favorite_car_ids, exclude_ids, top_k):
+    """기존 방식 추천 (간단한 구현)"""
+    try:
+        # 실제로는 차량 데이터베이스에서 가져와야 하지만,
+        # 여기서는 빈 리스트 반환 (Java 백엔드가 폴백 처리)
+        return []
+    except Exception:
+        return []
+
+def safe_convert_to_serializable(obj):
+    """JSON 직렬화 가능한 형태로 변환"""
+    if isinstance(obj, (np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif pd.isna(obj):
+        return None
+    else:
+        return obj
 
 if __name__ == '__main__':
     # 시작 시 모델 로드 시도
     if os.path.exists(MODEL_PATH):
-        ml_recommender.load_model(MODEL_PATH)
-        logger.info("기존 ML 모델을 로드했습니다.")
+        success = ml_recommender.load_model(MODEL_PATH)
+        if success:
+            logger.info("✅ 기존 ML 모델을 로드했습니다.")
+        else:
+            logger.warning("⚠️ 모델 로드에 실패했습니다.")
 
-    logger.info("ML 기반 AI 추천 서버 시작 중...")
+    logger.info("🚀 ML 기반 AI 추천 서버 시작 중...")
     app.run(host='0.0.0.0', port=5001, debug=True)
