@@ -29,8 +29,8 @@ public class MLRecommendationService {
     private final UserBehaviorService userBehaviorService;
     private final Environment environment;
 
-    @Value("${ai.recommendation.use-deep-learning:true}")
-    private boolean useDeepLearning;
+    @Value("${ai.recommendation.use-machine-learning:true}")
+    private boolean useMachineLearning;
 
     @Value("${ai.recommendation.fallback-enabled:true}")
     private boolean fallbackEnabled;
@@ -38,8 +38,8 @@ public class MLRecommendationService {
     @Value("${ai.recommendation.ab-test.enabled:false}")
     private boolean abTestEnabled;
 
-    @Value("${ai.recommendation.ab-test.deep-learning-ratio:0.5}")
-    private double deepLearningRatio;
+    @Value("${ai.recommendation.ab-test.machine-learning-ratio:0.5}")
+    private double machineLearningRatio;
 
     @Value("${ai.recommendation.target-users.enabled:false}")
     private boolean targetUsersEnabled;
@@ -55,26 +55,26 @@ public class MLRecommendationService {
      * 스마트 추천 라우팅 - 개발/테스트/운영 모든 환경 지원
      */
     public List<RecommendedCar> getSmartRecommendations(Long userId, int topK) {
-        // 1. 사용자별 딥러닝 사용 여부 결정
-        boolean shouldUseDeepLearning = shouldUseDeepLearningForUser(userId);
+        // 1. 사용자별 머신러닝 사용 여부 결정
+        boolean shouldUseMachineLearning = shouldUseMachineLearningForUser(userId);
 
-        log.info("추천 전략 결정 - 사용자: {}, 딥러닝: {}, 환경: {}",
-                userId, shouldUseDeepLearning, getCurrentProfile());
+        log.info("추천 전략 결정 - 사용자: {}, 머신러닝: {}, 환경: {}",
+                userId, shouldUseMachineLearning, getCurrentProfile());
 
-        if (shouldUseDeepLearning) {
-            return getDeepLearningRecommendationsWithFallback(userId, topK);
+        if (shouldUseMachineLearning) {
+            return getMachineLearningRecommendationsWithFallback(userId, topK);
         } else {
             return getLegacyRecommendations(userId, topK);
         }
     }
 
     /**
-     * 사용자별 딥러닝 사용 여부 결정 로직
+     * 사용자별 머신러닝 사용 여부 결정 로직
      */
-    private boolean shouldUseDeepLearningForUser(Long userId) {
+    private boolean shouldUseMachineLearningForUser(Long userId) {
         // 1. 전역 설정 확인
-        if (!useDeepLearning) {
-            log.debug("딥러닝 전역 비활성화");
+        if (!useMachineLearning) {
+            log.debug("머신러닝 전역 비활성화");
             return false;
         }
 
@@ -89,42 +89,42 @@ public class MLRecommendationService {
         if (abTestEnabled) {
             // 사용자 ID 기반 해시로 일관된 그룹 배정
             double hash = Math.abs(userId.hashCode() % 100) / 100.0;
-            boolean inDeepLearningGroup = hash < deepLearningRatio;
-            log.debug("A/B 테스트 - 사용자: {}, 해시: {:.2f}, 딥러닝 그룹: {}",
-                    userId, hash, inDeepLearningGroup);
-            return inDeepLearningGroup;
+            boolean inMachineLearningGroup = hash < machineLearningRatio;
+            log.debug("A/B 테스트 - 사용자: {}, 해시: {:.2f}, 머신러닝 그룹: {}",
+                    userId, hash, inMachineLearningGroup);
+            return inMachineLearningGroup;
         }
 
-        // 4. 기본값: 딥러닝 사용
+        // 4. 기본값: 머신러닝 사용
         return true;
     }
 
     /**
-     * 딥러닝 추천 + 자동 폴백
+     * 머신러닝 추천 + 자동 폴백
      */
-    private List<RecommendedCar> getDeepLearningRecommendationsWithFallback(Long userId, int topK) {
+    private List<RecommendedCar> getMachineLearningRecommendationsWithFallback(Long userId, int topK) {
         long startTime = System.currentTimeMillis();
 
         try {
-            // 딥러닝 시도
-            List<RecommendedCar> recommendations = attemptDeepLearningRecommendation(userId, topK);
+            // 머신러닝 시도
+            List<RecommendedCar> recommendations = attemptMachineLearningRecommendation(userId, topK);
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("딥러닝 추천 성공 - 사용자: {}, 결과: {}개, 소요시간: {}ms",
+            log.info("머신러닝 추천 성공 - 사용자: {}, 결과: {}개, 소요시간: {}ms",
                     userId, recommendations.size(), duration);
 
             // 성공 시 메트릭 기록
-            recordRecommendationMetrics(userId, "deep_learning", true, duration, recommendations.size());
+            recordRecommendationMetrics(userId, "machine_learning", true, duration, recommendations.size());
 
             return recommendations;
 
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.warn("딥러닝 추천 실패 - 사용자: {}, 소요시간: {}ms, 오류: {}",
+            log.warn("머신러닝 추천 실패 - 사용자: {}, 소요시간: {}ms, 오류: {}",
                     userId, duration, e.getMessage());
 
             // 실패 메트릭 기록
-            recordRecommendationMetrics(userId, "deep_learning", false, duration, 0);
+            recordRecommendationMetrics(userId, "machine_learning", false, duration, 0);
 
             // 폴백 활성화 시 기존 방식 사용
             if (fallbackEnabled) {
@@ -137,15 +137,15 @@ public class MLRecommendationService {
 
                 return fallbackRecommendations;
             } else {
-                throw new RuntimeException("딥러닝 추천 실패 및 폴백 비활성화", e);
+                throw new RuntimeException("머신러닝 추천 실패 및 폴백 비활성화", e);
             }
         }
     }
 
     /**
-     * 딥러닝 추천 시도
+     * 머신러닝 추천 시도
      */
-    private List<RecommendedCar> attemptDeepLearningRecommendation(Long userId, int topK) {
+    private List<RecommendedCar> attemptMachineLearningRecommendation(Long userId, int topK) {
         try {
             // 1. 후보 차량 생성
             List<Car> candidateCars = generateOptimizedCandidateCars(userId);
@@ -155,19 +155,17 @@ public class MLRecommendationService {
                 return Collections.emptyList();
             }
 
-            // 2. 사용자 행동 데이터 수집
-            Map<String, Object> userBehaviorData = userBehaviorService != null
-                    ? userBehaviorService.getUserBehaviorData(userId)
-                    : Collections.emptyMap();
+            log.info("머신러닝 추천 시도 - 사용자: {}, 후보차량: {}개", userId, candidateCars.size());
 
-            // 3. AI 서버에 딥러닝 요청 (수정된 방식)
+            // 2. 사용자 즐겨찾기 조회
             List<Long> favoriteCarIds = getUserFavoriteCarIds(userId);
 
-            // 후보 차량을 AI 서비스 형식으로 변환
+            // 3. 후보 차량을 AI 서비스 형식으로 변환
             List<Map<String, Object>> candidateCarData = candidateCars.stream()
                     .map(this::convertCarToAIFormat)
                     .collect(Collectors.toList());
 
+            // 4. AI 서버에 머신러닝 요청
             AIServiceClient.AIRecommendationResponse response = aiServiceClient.getRecommendationsWithCandidates(
                     userId,
                     favoriteCarIds,
@@ -176,40 +174,56 @@ public class MLRecommendationService {
                     topK
             );
 
-            if (response == null || response.getRecommendations().isEmpty()) {
-                log.warn("AI 서버 응답 없음 - 사용자: {}", userId);
+            // 5. 응답 처리
+            if (response == null) {
+                log.warn("AI 서버 응답이 null - 사용자: {}", userId);
                 return Collections.emptyList();
             }
 
-            // 4. 결과 변환 및 후처리
+            if (response.getRecommendations() == null || response.getRecommendations().isEmpty()) {
+                log.warn("AI 서버 추천 결과 없음 - 사용자: {}", userId);
+                return Collections.emptyList();
+            }
+
+            // 6. 결과 변환 및 후처리
             List<RecommendedCar> recommendations = response.getRecommendations().stream()
                     .map(this::convertAIRecommendationToRecommendedCar)
                     .filter(Objects::nonNull)
                     .limit(topK)
                     .collect(Collectors.toList());
 
+            log.info("머신러닝 추천 성공 - 사용자: {}, 결과: {}개", userId, recommendations.size());
             return recommendations;
 
         } catch (Exception e) {
-            log.error("딥러닝 추천 시도 중 오류 - 사용자: {}", userId, e);
+            log.error("머신러닝 추천 시도 중 오류 - 사용자: {}", userId, e);
             throw e;
         }
     }
 
     /**
-     * 차량을 AI 서비스 형식으로 변환
+     * 차량을 AI 서비스 형식으로 변환 (개선된 버전)
      */
     private Map<String, Object> convertCarToAIFormat(Car car) {
         Map<String, Object> carData = new HashMap<>();
+
+        // 기본 정보
         carData.put("id", car.getId());
-        carData.put("model", car.getModel());
-        carData.put("year", extractYear(car.getYear()));
-        carData.put("price", car.getPrice());
-        carData.put("mileage", car.getMileage() != null ? car.getMileage() : 0);
-        carData.put("fuel", car.getFuel());
-        carData.put("region", car.getRegion());
-        carData.put("carType", car.getCarType());
+        carData.put("model", car.getModel() != null ? car.getModel() : "");
+        carData.put("year", car.getYear() != null ? car.getYear() : "2020");
+        carData.put("price", car.getPrice() != null ? car.getPrice() : 2000);
+        carData.put("mileage", car.getMileage() != null ? car.getMileage() : 50000);
+        carData.put("fuel", car.getFuel() != null ? car.getFuel() : "가솔린");
+        carData.put("region", car.getRegion() != null ? car.getRegion() : "서울");
+        carData.put("carType", car.getCarType() != null ? car.getCarType() : "중형차");
+
+        // 파생 정보
         carData.put("brand", extractBrand(car.getModel()));
+
+        // 연도 추출
+        int year = extractYear(car.getYear());
+        carData.put("year_numeric", year);
+        carData.put("age", 2024 - year);
 
         return carData;
     }
@@ -402,25 +416,60 @@ public class MLRecommendationService {
     }
 
     /**
-     * AI 추천 결과 변환
+     * AI 추천 결과 변환 (에러 처리 강화)
      */
     private RecommendedCar convertAIRecommendationToRecommendedCar(AIServiceClient.RecommendationItem item) {
         try {
-            Map<String, Object> carData = item.getCar();
-            Long carId = Long.valueOf(carData.get("id").toString());
+            if (item == null || item.getCar() == null) {
+                log.warn("추천 아이템이 null입니다");
+                return null;
+            }
 
+            Map<String, Object> carData = item.getCar();
+
+            // ID 추출 (여러 형태 지원)
+            Object idObj = carData.get("id");
+            Long carId;
+
+            if (idObj instanceof Number) {
+                carId = ((Number) idObj).longValue();
+            } else if (idObj instanceof String) {
+                try {
+                    carId = Long.valueOf((String) idObj);
+                } catch (NumberFormatException e) {
+                    log.warn("잘못된 차량 ID 형식: {}", idObj);
+                    return null;
+                }
+            } else {
+                log.warn("알 수 없는 차량 ID 타입: {}", idObj);
+                return null;
+            }
+
+            // 차량 조회
             Optional<Car> carOpt = carRepository.findById(carId);
             if (carOpt.isPresent()) {
+                double similarityScore = item.getSimilarityScore();
+                String reason = item.getRecommendationReason();
+
+                // 점수 정규화 (0-1 범위)
+                if (similarityScore > 1.0) {
+                    similarityScore = similarityScore / 5.0;  // 5점 만점을 1점 만점으로
+                }
+
                 return new RecommendedCar(
                         carOpt.get(),
-                        item.getSimilarityScore(),
-                        item.getRecommendationReason()
+                        Math.max(0.0, Math.min(1.0, similarityScore)),
+                        reason != null ? reason : "머신러닝 추천"
                 );
+            } else {
+                log.warn("추천된 차량 ID {}를 데이터베이스에서 찾을 수 없습니다", carId);
+                return null;
             }
+
         } catch (Exception e) {
-            log.error("AI 추천 결과 변환 중 오류: {}", e.getMessage());
+            log.error("AI 추천 결과 변환 중 오류: {}", e.getMessage(), e);
+            return null;
         }
-        return null;
     }
 
     /**
@@ -439,18 +488,18 @@ public class MLRecommendationService {
         Map<String, Object> debugInfo = new HashMap<>();
 
         debugInfo.put("userId", userId);
-        debugInfo.put("globalDeepLearningEnabled", useDeepLearning);
+        debugInfo.put("globalMachineLearningEnabled", useMachineLearning);
         debugInfo.put("fallbackEnabled", fallbackEnabled);
         debugInfo.put("abTestEnabled", abTestEnabled);
         debugInfo.put("targetUsersEnabled", targetUsersEnabled);
-        debugInfo.put("shouldUseDeepLearning", shouldUseDeepLearningForUser(userId));
+        debugInfo.put("shouldUseMachineLearning", shouldUseMachineLearningForUser(userId));
         debugInfo.put("environment", getCurrentProfile());
 
         if (abTestEnabled) {
             double hash = Math.abs(userId.hashCode() % 100) / 100.0;
             debugInfo.put("abTestHash", hash);
-            debugInfo.put("deepLearningRatio", deepLearningRatio);
-            debugInfo.put("inDeepLearningGroup", hash < deepLearningRatio);
+            debugInfo.put("machineLearningRatio", machineLearningRatio);
+            debugInfo.put("inMachineLearningGroup", hash < machineLearningRatio);
         }
 
         if (targetUsersEnabled && !whitelistUsers.isEmpty()) {

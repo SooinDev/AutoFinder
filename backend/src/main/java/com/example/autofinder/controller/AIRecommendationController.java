@@ -14,11 +14,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AIRecommendationController {
 
-    private final MLRecommendationService deepLearningRecommendationService;
+    private final MLRecommendationService machineLearningRecommendationService;
     private final JwtUtil jwtUtil;
 
     /**
-     * 스마트 AI 추천 차량 조회 (딥러닝 + 폴백)
+     * 스마트 AI 추천 차량 조회 (머신러닝 + 폴백)
      */
     @GetMapping("/recommend")
     public ResponseEntity<?> getRecommendations(
@@ -33,18 +33,18 @@ public class AIRecommendationController {
                 return ResponseEntity.status(401).body("Invalid token");
             }
 
-            // 스마트 추천 호출 (딥러닝 + 폴백)
+            // 스마트 추천 호출 (머신러닝 + 폴백)
             List<MLRecommendationService.RecommendedCar> recommendations =
-                    deepLearningRecommendationService.getSmartRecommendations(userId, limit);
+                    machineLearningRecommendationService.getSmartRecommendations(userId, limit);
 
             // 디버그 정보 포함
-            Map<String, Object> debugInfo = deepLearningRecommendationService.getRecommendationDebugInfo(userId);
+            Map<String, Object> debugInfo = machineLearningRecommendationService.getRecommendationDebugInfo(userId);
 
             return ResponseEntity.ok(Map.of(
                     "recommendations", recommendations,
                     "total", recommendations.size(),
-                    "strategy", debugInfo.get("shouldUseDeepLearning") != null &&
-                            (Boolean) debugInfo.get("shouldUseDeepLearning") ? "deep_learning" : "legacy",
+                    "strategy", debugInfo.get("shouldUseMachineLearning") != null &&
+                            (Boolean) debugInfo.get("shouldUseMachineLearning") ? "machine_learning" : "legacy",
                     "debug", debugInfo,
                     "message", "스마트 AI 추천 완료"
             ));
@@ -58,10 +58,10 @@ public class AIRecommendationController {
     }
 
     /**
-     * 강제 딥러닝 추천 (테스트용)
+     * 강제 머신러닝 추천 (테스트용)
      */
-    @GetMapping("/recommend/deep-learning")
-    public ResponseEntity<?> getDeepLearningRecommendations(
+    @GetMapping("/recommend/machine-learning")
+    public ResponseEntity<?> getMachineLearningRecommendations(
             @RequestHeader("Authorization") String token,
             @RequestParam(defaultValue = "10") int limit) {
         try {
@@ -72,20 +72,20 @@ public class AIRecommendationController {
                 return ResponseEntity.status(401).body("Invalid token");
             }
 
-            // 강제로 딥러닝 사용 (테스트 목적)
+            // 강제로 머신러닝 사용 (테스트 목적)
             List<MLRecommendationService.RecommendedCar> recommendations =
-                    deepLearningRecommendationService.getSmartRecommendations(userId, limit);
+                    machineLearningRecommendationService.getSmartRecommendations(userId, limit);
 
             return ResponseEntity.ok(Map.of(
                     "recommendations", recommendations,
                     "total", recommendations.size(),
-                    "strategy", "forced_deep_learning",
-                    "message", "딥러닝 추천 완료"
+                    "strategy", "forced_machine_learning",
+                    "message", "머신러닝 추천 완료"
             ));
 
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of(
-                    "error", "딥러닝 추천 중 오류가 발생했습니다.",
+                    "error", "머신러닝 추천 중 오류가 발생했습니다.",
                     "details", e.getMessage()
             ));
         }
@@ -107,10 +107,10 @@ public class AIRecommendationController {
             }
 
             // 캐시 무효화 후 새로운 추천 생성
-            deepLearningRecommendationService.onFavoriteChanged(userId);
+            machineLearningRecommendationService.onFavoriteChanged(userId);
 
             List<MLRecommendationService.RecommendedCar> recommendations =
-                    deepLearningRecommendationService.getSmartRecommendations(userId, limit);
+                    machineLearningRecommendationService.getSmartRecommendations(userId, limit);
 
             return ResponseEntity.ok(Map.of(
                     "recommendations", recommendations,
@@ -134,7 +134,7 @@ public class AIRecommendationController {
     @GetMapping("/debug/{userId}")
     public ResponseEntity<?> getRecommendationDebugInfo(@PathVariable Long userId) {
         try {
-            Map<String, Object> debugInfo = deepLearningRecommendationService.getRecommendationDebugInfo(userId);
+            Map<String, Object> debugInfo = machineLearningRecommendationService.getRecommendationDebugInfo(userId);
 
             return ResponseEntity.ok(Map.of(
                     "userId", userId,
@@ -163,7 +163,7 @@ public class AIRecommendationController {
                 return ResponseEntity.status(401).body("Invalid token");
             }
 
-            Map<String, Object> debugInfo = deepLearningRecommendationService.getRecommendationDebugInfo(userId);
+            Map<String, Object> debugInfo = machineLearningRecommendationService.getRecommendationDebugInfo(userId);
 
             return ResponseEntity.ok(Map.of(
                     "userId", userId,
@@ -192,7 +192,7 @@ public class AIRecommendationController {
                 return ResponseEntity.status(401).body("Invalid token");
             }
 
-            deepLearningRecommendationService.onFavoriteChanged(userId);
+            machineLearningRecommendationService.onFavoriteChanged(userId);
 
             return ResponseEntity.ok(Map.of(
                     "message", "사용자 추천 캐시가 삭제되었습니다.",
@@ -213,7 +213,7 @@ public class AIRecommendationController {
     @GetMapping("/status")
     public ResponseEntity<?> getAIServiceStatus() {
         try {
-            boolean isAvailable = deepLearningRecommendationService.isAIServiceAvailable();
+            boolean isAvailable = machineLearningRecommendationService.isAIServiceAvailable();
 
             return ResponseEntity.ok(Map.of(
                     "aiServiceAvailable", isAvailable,
@@ -237,8 +237,8 @@ public class AIRecommendationController {
         try {
             // 향후 A/B 테스트 분석 로직 구현
             Map<String, Object> analysis = Map.of(
-                    "deepLearningGroup", Map.of(
-                            "description", "딥러닝 추천을 받는 사용자 그룹",
+                    "machineLearningGroup", Map.of(
+                            "description", "머신러닝 추천을 받는 사용자 그룹",
                             "note", "실제 분석 데이터는 향후 구현 예정"
                     ),
                     "legacyGroup", Map.of(
@@ -291,7 +291,7 @@ public class AIRecommendationController {
                     "totalRequests", "메트릭 수집 중",
                     "averageResponseTime", "메트릭 수집 중",
                     "successRate", "메트릭 수집 중",
-                    "deepLearningUsage", "메트릭 수집 중",
+                    "machineLearningUsage", "메트릭 수집 중",
                     "fallbackRate", "메트릭 수집 중",
                     "message", "실시간 메트릭 수집 기능 구현 중"
             );

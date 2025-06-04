@@ -8,9 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.RestClientException;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -115,6 +118,84 @@ public class AIServiceClient {
     }
 
     /**
+     * 후보 차량과 함께 추천 요청 (머신러닝 방식)
+     */
+    public AIRecommendationResponse getRecommendationsWithCandidates(Long userId, List<Long> favoriteCarIds,
+                                                                     List<Map<String, Object>> candidateCars,
+                                                                     List<Long> excludeIds, int topK) {
+        try {
+            String url = aiServiceBaseUrl + "/recommend";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("user_id", userId);
+            requestBody.put("favorite_car_ids", favoriteCarIds != null ? favoriteCarIds : List.of());
+            requestBody.put("candidate_cars", candidateCars != null ? candidateCars : List.of());
+            requestBody.put("exclude_ids", excludeIds != null ? excludeIds : List.of());
+            requestBody.put("top_k", topK);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            log.info("머신러닝 추천 요청: 사용자 {}, 즐겨찾기 {}개, 후보 차량 {}개",
+                    userId, favoriteCarIds.size(), candidateCars.size());
+
+            // 응답을 Map으로 받아서 직접 파싱
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+
+                // 추천 리스트 추출
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> recommendationsList =
+                        (List<Map<String, Object>>) responseBody.get("recommendations");
+
+                if (recommendationsList == null) {
+                    log.warn("응답에서 recommendations 필드가 null입니다");
+                    return createEmptyResponse();
+                }
+
+                // RecommendationItem으로 변환
+                List<RecommendationItem> recommendations = recommendationsList.stream()
+                        .map(this::convertMapToRecommendationItem)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                // AIRecommendationResponse 생성
+                AIRecommendationResponse aiResponse = new AIRecommendationResponse();
+                aiResponse.setRecommendations(recommendations);
+
+                // totalCount 추출 (여러 키 이름 지원)
+                Object totalCountObj = responseBody.get("totalCount");
+                if (totalCountObj == null) {
+                    totalCountObj = responseBody.get("total_count");
+                }
+
+                int totalCount = recommendations.size();
+                if (totalCountObj instanceof Number) {
+                    totalCount = ((Number) totalCountObj).intValue();
+                }
+
+                aiResponse.setTotalCount(totalCount);
+                aiResponse.setTimestamp(LocalDateTime.now().toString());
+
+                log.info("머신러닝 추천 성공: {}개 추천 받음", recommendations.size());
+                return aiResponse;
+
+            } else {
+                log.error("머신러닝 추천 실패: HTTP {}", response.getStatusCode());
+                return createEmptyResponse();
+            }
+
+        } catch (Exception e) {
+            log.error("머신러닝 추천 요청 중 오류 발생: {}", e.getMessage(), e);
+            return createEmptyResponse();
+        }
+    }
+
+    /**
      * 차량 추천 요청 (기존 방식 - 안전성 강화)
      */
     public AIRecommendationResponse getRecommendations(List<Long> favoriteCarIds, List<Long> excludeIds, int topK) {
@@ -131,30 +212,45 @@ public class AIServiceClient {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            log.debug("AI 추천 요청 (기존방식): 즐겨찾기 {}개, 제외 {}개, topK {}",
+            log.debug("기존 AI 추천 요청: 즐겨찾기 {}개, 제외 {}개, topK {}",
                     favoriteCarIds != null ? favoriteCarIds.size() : 0,
                     excludeIds != null ? excludeIds.size() : 0, topK);
 
-            ResponseEntity<AIRecommendationResponse> response = restTemplate.postForEntity(
-                    url, request, AIRecommendationResponse.class
-            );
+            // 응답을 Map으로 받아서 처리
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
 
-            if (response.getStatusCode() == HttpStatus.OK) {
-                AIRecommendationResponse body = response.getBody();
-                if (body != null && body.getRecommendations() != null) {
-                    log.info("AI 추천 성공: {} 개의 추천 차량", body.getRecommendations().size());
-                    return body;
-                } else {
-                    log.warn("AI 추천 응답이 비어있습니다.");
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> responseBody = response.getBody();
+
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> recommendationsList =
+                        (List<Map<String, Object>>) responseBody.get("recommendations");
+
+                if (recommendationsList == null) {
+                    log.warn("기존 추천 응답에서 recommendations 필드가 null입니다");
                     return createEmptyResponse();
                 }
+
+                List<RecommendationItem> recommendations = recommendationsList.stream()
+                        .map(this::convertMapToRecommendationItem)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+
+                AIRecommendationResponse aiResponse = new AIRecommendationResponse();
+                aiResponse.setRecommendations(recommendations);
+                aiResponse.setTotalCount(recommendations.size());
+                aiResponse.setTimestamp(LocalDateTime.now().toString());
+
+                log.info("기존 AI 추천 성공: {}개 추천 받음", recommendations.size());
+                return aiResponse;
+
             } else {
-                log.error("AI 추천 실패: HTTP {}", response.getStatusCode());
+                log.error("기존 AI 추천 실패: HTTP {}", response.getStatusCode());
                 return createEmptyResponse();
             }
 
-        } catch (RestClientException e) {
-            log.error("AI 추천 요청 중 오류 발생: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("기존 AI 추천 요청 중 오류 발생: {}", e.getMessage());
             return createEmptyResponse();
         }
     }
@@ -166,48 +262,51 @@ public class AIServiceClient {
         AIRecommendationResponse emptyResponse = new AIRecommendationResponse();
         emptyResponse.setRecommendations(List.of());
         emptyResponse.setTotalCount(0);
-        emptyResponse.setTimestamp(java.time.LocalDateTime.now().toString());
+        emptyResponse.setTimestamp(LocalDateTime.now().toString());
         return emptyResponse;
     }
 
     /**
-     * 후보 차량과 함께 추천 요청 (새로운 방식)
+     * Map을 RecommendationItem으로 변환
      */
-    public AIRecommendationResponse getRecommendationsWithCandidates(Long userId, List<Long> favoriteCarIds,
-                                                                     List<Map<String, Object>> candidateCars,
-                                                                     List<Long> excludeIds, int topK) {
+    private RecommendationItem convertMapToRecommendationItem(Map<String, Object> itemMap) {
         try {
-            String url = aiServiceBaseUrl + "/recommend";
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("user_id", userId);
-            requestBody.put("favorite_car_ids", favoriteCarIds);
-            requestBody.put("candidate_cars", candidateCars);
-            requestBody.put("exclude_ids", excludeIds != null ? excludeIds : List.of());
-            requestBody.put("top_k", topK);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-            log.info("AI 추천 요청: 사용자 {}, 즐겨찾기 {}개, 후보 차량 {}개",
-                    userId, favoriteCarIds.size(), candidateCars.size());
-
-            ResponseEntity<AIRecommendationResponse> response = restTemplate.postForEntity(
-                    url, request, AIRecommendationResponse.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("AI 추천 성공: {} 개의 추천 차량", response.getBody().getRecommendations().size());
-                return response.getBody();
-            } else {
-                log.error("AI 추천 실패: HTTP {}", response.getStatusCode());
+            if (itemMap == null) {
                 return null;
             }
 
-        } catch (RestClientException e) {
-            log.error("AI 추천 요청 중 오류 발생: {}", e.getMessage(), e);
+            RecommendationItem item = new RecommendationItem();
+
+            // car 데이터 추출
+            @SuppressWarnings("unchecked")
+            Map<String, Object> carData = (Map<String, Object>) itemMap.get("car");
+            if (carData != null) {
+                item.setCar(carData);
+            } else {
+                log.warn("추천 아이템에서 car 데이터가 없습니다");
+                return null;
+            }
+
+            // similarity_score 추출
+            Object scoreObj = itemMap.get("similarity_score");
+            if (scoreObj instanceof Number) {
+                item.setSimilarityScore(((Number) scoreObj).doubleValue());
+            } else {
+                item.setSimilarityScore(0.5); // 기본값
+            }
+
+            // recommendation_reason 추출
+            Object reasonObj = itemMap.get("recommendation_reason");
+            if (reasonObj != null) {
+                item.setRecommendationReason(reasonObj.toString());
+            } else {
+                item.setRecommendationReason("머신러닝 추천");
+            }
+
+            return item;
+
+        } catch (Exception e) {
+            log.error("추천 아이템 변환 중 오류: {}", e.getMessage());
             return null;
         }
     }
