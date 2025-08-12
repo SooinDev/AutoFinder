@@ -17,22 +17,18 @@ import java.util.Optional;
 public class CarService {
     private final CarRepository carRepository;
 
-    // 차량 추가 (CREATE)
     public Car addCar(Car car) {
         return carRepository.save(car);
     }
 
-    // 특정 ID로 차량 조회 (READ)
     public Optional<Car> getCarById(Long id) {
         return carRepository.findById(id);
     }
 
-    // 차량 목록 조회 (페이징 포함)
     public Page<Car> getAllCars(Pageable pageable) {
         return carRepository.findAll(pageable);
     }
 
-    // 차량 목록 검색 (페이징 및 필터링 포함)
     public Page<Car> searchCars(String model, Integer minPrice, Integer maxPrice,
                                 Integer minMileage, Integer maxMileage, String fuel,
                                 String region, String year, Pageable pageable) {
@@ -53,7 +49,6 @@ public class CarService {
         return carRepository.findByFilters(model, minPrice, maxPrice, minMileage, maxMileage, fuel, region, year, pageable);
     }
 
-    // 차량 정보 수정 (UPDATE)
     public Car updateCar(Long id, Car updatedCar) {
         return carRepository.findById(id).map(car -> {
             car.setCarType(updatedCar.getCarType());
@@ -68,7 +63,6 @@ public class CarService {
         }).orElseThrow(() -> new IllegalArgumentException("해당 ID의 차량을 찾을 수 없습니다."));
     }
 
-    // 차량 삭제 (DELETE)
     public void deleteCar(Long id) {
         if (!carRepository.existsById(id)) {
             throw new IllegalArgumentException("해당 ID의 차량을 찾을 수 없습니다.");
