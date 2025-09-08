@@ -13,8 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @EnableScheduling
 public class RestTemplateConfig {
 
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+  @Bean
+  public RestTemplate restTemplate() {
+    return new RestTemplate();
+  }
 }

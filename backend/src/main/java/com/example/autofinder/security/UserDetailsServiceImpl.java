@@ -9,18 +9,18 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
-    private final UserRepository userRepository;
+  private final UserRepository userRepository;
 
-    public UserDetailsServiceImpl(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+  public UserDetailsServiceImpl(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
 
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        System.out.println("사용자 찾기: " + username);  // 디버깅 로그 추가
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    System.out.println("사용자 찾기: " + username);  // 디버깅 로그 추가
+    User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        return new CustomUserDetails(user);
-    }
+    return new CustomUserDetails(user);
+  }
 }

@@ -12,17 +12,17 @@ import java.util.Map;
 @RequestMapping("/api/analytics")
 @RequiredArgsConstructor
 public class AnalyticsController {
-    private final AnalyticsService analyticsService;
+  private final AnalyticsService analyticsService;
 
-    // 테스트
-    /**
-     * 특정 모델의 연식별 가격 통계 조회 API
-     * @param model 차량 모델명
-     * @return 연식별 가격 통계 데이터 (최저가, 평균가, 최고가)
-     */
-    @GetMapping("/price-by-year/{model}")
-    public ResponseEntity<List<Map<String, Object>>> getPriceStatsByYear(@PathVariable String model) {
-        List<Map<String, Object>> priceStats = analyticsService.getPriceStatsByYear(model);
-        return ResponseEntity.ok(priceStats);
-    }
+  // 테스트
+  /**
+   * 특정 모델의 연식별 가격 통계 조회 API
+   * @param model 차량 모델명
+   * @return 연식별 가격 통계 데이터 (최저가, 평균가, 최고가)
+   */
+  @GetMapping("/price-by-year/{model}")
+  public ResponseEntity<List<Map<String, Object>>> getPriceStatsByYear(@PathVariable String model) {
+    List<Map<String, Object>> priceStats = analyticsService.getPriceStatsByYear(model);
+    return ResponseEntity.ok(priceStats);
+  }
 }

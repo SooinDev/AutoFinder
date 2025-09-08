@@ -12,25 +12,25 @@ import java.util.List;
 @RequestMapping("/api/favorites")
 @RequiredArgsConstructor
 public class FavoriteController {
-    private final FavoriteService favoriteService;
+  private final FavoriteService favoriteService;
 
-    // 관심 차량 추가 API
-    @PostMapping("/{carId}")
-    public ResponseEntity<String> addFavorite(@RequestParam Long userId, @PathVariable Long carId) {
-        favoriteService.addFavorite(userId, carId);
-        return ResponseEntity.ok("Favorite added successfully");
-    }
+  // 관심 차량 추가 API
+  @PostMapping("/{carId}")
+  public ResponseEntity<String> addFavorite(@RequestParam Long userId, @PathVariable Long carId) {
+    favoriteService.addFavorite(userId, carId);
+    return ResponseEntity.ok("Favorite added successfully");
+  }
 
-    // 관심 차량 삭제 API
-    @DeleteMapping("/{carId}")
-    public ResponseEntity<String> removeFavorite(@RequestParam Long userId, @PathVariable Long carId) {
-        favoriteService.removeFavorite(userId, carId);
-        return ResponseEntity.ok("Favorite removed successfully");
-    }
+  // 관심 차량 삭제 API
+  @DeleteMapping("/{carId}")
+  public ResponseEntity<String> removeFavorite(@RequestParam Long userId, @PathVariable Long carId) {
+    favoriteService.removeFavorite(userId, carId);
+    return ResponseEntity.ok("Favorite removed successfully");
+  }
 
-    // 관심 차량 목록 조회 API
-    @GetMapping
-    public ResponseEntity<List<Car>> getUserFavorites(@RequestParam Long userId) {
-        return ResponseEntity.ok(favoriteService.getUserFavorites(userId));
-    }
+  // 관심 차량 목록 조회 API
+  @GetMapping
+  public ResponseEntity<List<Car>> getUserFavorites(@RequestParam Long userId) {
+    return ResponseEntity.ok(favoriteService.getUserFavorites(userId));
+  }
 }

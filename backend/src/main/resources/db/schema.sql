@@ -147,16 +147,16 @@ ALTER TABLE user_behaviors
 -- 비교 통계 뷰
 CREATE VIEW comparison_statistics AS
 SELECT
-    DATE(created_at) as comparison_date,
-    COUNT(*) as daily_comparisons,
-    COUNT(DISTINCT user_id) as unique_users,
-    AVG(CHAR_LENGTH(car_ids) - CHAR_LENGTH(REPLACE(car_ids, ',', '')) + 1) as avg_cars_per_comparison,
-    COUNT(CASE WHEN comparison_name IS NOT NULL THEN 1 END) as saved_comparisons,
-    ROUND(COUNT(CASE WHEN comparison_name IS NOT NULL THEN 1 END) * 100.0 / COUNT(*), 2) as save_rate_percent
-FROM car_comparisons
-WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-GROUP BY DATE(created_at)
-ORDER BY comparison_date DESC;
+        DATE(created_at) as comparison_date,
+        COUNT(*) as daily_comparisons,
+        COUNT(DISTINCT user_id) as unique_users,
+        AVG(CHAR_LENGTH(car_ids) - CHAR_LENGTH(REPLACE(car_ids, ',', '')) + 1) as avg_cars_per_comparison,
+        COUNT(CASE WHEN comparison_name IS NOT NULL THEN 1 END) as saved_comparisons,
+        ROUND(COUNT(CASE WHEN comparison_name IS NOT NULL THEN 1 END) * 100.0 / COUNT(*), 2) as save_rate_percent
+        FROM car_comparisons
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY comparison_date DESC;
 
 -- 인기 차량 비교 뷰
 CREATE VIEW popular_comparison_cars AS
@@ -247,8 +247,8 @@ SELECT
     MAX(timestamp) as latest_action
 FROM user_behaviors
 WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
-GROUP BY action_type
-ORDER BY action_count DESC;
+        GROUP BY action_type
+        ORDER BY action_count DESC;
 
 -- 🆕 사용자 비교 활동 뷰
 CREATE VIEW user_comparison_activity AS
@@ -284,57 +284,57 @@ CREATE PROCEDURE GetFrequentlyComparedCars(
     IN limit_count INT DEFAULT 10
 )
 BEGIN
-    SELECT
-        other_car_id,
-        c.model as other_car_model,
-        c.price as other_car_price,
-        c.year as other_car_year,
-        co_comparison_count,
-        ROUND(co_comparison_count * 100.0 / total_comparisons.total, 2) as comparison_percentage
-    FROM (
+SELECT
+    other_car_id,
+    c.model as other_car_model,
+    c.price as other_car_price,
+    c.year as other_car_year,
+    co_comparison_count,
+    ROUND(co_comparison_count * 100.0 / total_comparisons.total, 2) as comparison_percentage
+FROM (
+         SELECT
+             CAST(other_car.car_id AS UNSIGNED) as other_car_id,
+             COUNT(*) as co_comparison_count
+         FROM (
+                  SELECT
+                      cc.id,
+                      TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(cc.car_ids, ',', numbers.n), ',', -1)) as car_id
+                  FROM car_comparisons cc
+                           CROSS JOIN (
+                      SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3
+                      UNION ALL SELECT 4 UNION ALL SELECT 5
+                  ) numbers
+                  WHERE CHAR_LENGTH(cc.car_ids) - CHAR_LENGTH(REPLACE(cc.car_ids, ',', '')) >= numbers.n - 1
+                    AND cc.car_ids LIKE CONCAT('%', target_car_id, '%')
+                    AND cc.created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+              ) target_car
+                  JOIN (
              SELECT
-                 CAST(other_car.car_id AS UNSIGNED) as other_car_id,
-                 COUNT(*) as co_comparison_count
-             FROM (
-                      SELECT
-                          cc.id,
-                          TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(cc.car_ids, ',', numbers.n), ',', -1)) as car_id
-                      FROM car_comparisons cc
-                               CROSS JOIN (
-                          SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3
-                          UNION ALL SELECT 4 UNION ALL SELECT 5
-                      ) numbers
-                      WHERE CHAR_LENGTH(cc.car_ids) - CHAR_LENGTH(REPLACE(cc.car_ids, ',', '')) >= numbers.n - 1
-                        AND cc.car_ids LIKE CONCAT('%', target_car_id, '%')
-                        AND cc.created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
-                  ) target_car
-                      JOIN (
-                 SELECT
-                     cc.id,
-                     TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(cc.car_ids, ',', numbers.n), ',', -1)) as car_id
-                 FROM car_comparisons cc
-                          CROSS JOIN (
-                     SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3
-                     UNION ALL SELECT 4 UNION ALL SELECT 5
-                 ) numbers
-                 WHERE CHAR_LENGTH(cc.car_ids) - CHAR_LENGTH(REPLACE(cc.car_ids, ',', '')) >= numbers.n - 1
-             ) other_car ON target_car.id = other_car.id
-             WHERE target_car.car_id = target_car_id
-               AND other_car.car_id != target_car_id
+                 cc.id,
+                 TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(cc.car_ids, ',', numbers.n), ',', -1)) as car_id
+             FROM car_comparisons cc
+                      CROSS JOIN (
+                 SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3
+                 UNION ALL SELECT 4 UNION ALL SELECT 5
+             ) numbers
+             WHERE CHAR_LENGTH(cc.car_ids) - CHAR_LENGTH(REPLACE(cc.car_ids, ',', '')) >= numbers.n - 1
+         ) other_car ON target_car.id = other_car.id
+         WHERE target_car.car_id = target_car_id
+           AND other_car.car_id != target_car_id
                AND other_car.car_id REGEXP '^[0-9]+$'
-             GROUP BY other_car.car_id
-             ORDER BY co_comparison_count DESC
+         GROUP BY other_car.car_id
+         ORDER BY co_comparison_count DESC
              LIMIT limit_count
-         ) freq_compared
-             CROSS JOIN (
-        SELECT COUNT(*) as total
-        FROM car_comparisons
-        WHERE car_ids LIKE CONCAT('%', target_car_id, '%')
-          AND created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
-    ) total_comparisons
-             LEFT JOIN cars c ON freq_compared.other_car_id = c.id
-    WHERE c.id IS NOT NULL
-    ORDER BY co_comparison_count DESC;
+     ) freq_compared
+         CROSS JOIN (
+    SELECT COUNT(*) as total
+    FROM car_comparisons
+    WHERE car_ids LIKE CONCAT('%', target_car_id, '%')
+      AND created_at >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+) total_comparisons
+         LEFT JOIN cars c ON freq_compared.other_car_id = c.id
+WHERE c.id IS NOT NULL
+ORDER BY co_comparison_count DESC;
 END //
 
 -- 비교 트렌드 분석
@@ -342,24 +342,24 @@ CREATE PROCEDURE GetComparisonTrends(
     IN days_back INT DEFAULT 30
 )
 BEGIN
-    SELECT
-        comparison_date,
-        daily_comparisons,
-        unique_users,
-        avg_cars_per_comparison,
-        save_rate_percent,
-        LAG(daily_comparisons) OVER (ORDER BY comparison_date) as prev_day_comparisons,
-        ROUND(
-                CASE
-                    WHEN LAG(daily_comparisons) OVER (ORDER BY comparison_date) > 0 THEN
-                        (daily_comparisons - LAG(daily_comparisons) OVER (ORDER BY comparison_date)) * 100.0 /
-                        LAG(daily_comparisons) OVER (ORDER BY comparison_date)
-                    ELSE 0
-                    END, 2
-        ) as daily_growth_percent
-    FROM comparison_statistics
-    WHERE comparison_date >= DATE_SUB(CURDATE(), INTERVAL days_back DAY)
-    ORDER BY comparison_date DESC;
+SELECT
+    comparison_date,
+    daily_comparisons,
+    unique_users,
+    avg_cars_per_comparison,
+    save_rate_percent,
+    LAG(daily_comparisons) OVER (ORDER BY comparison_date) as prev_day_comparisons,
+    ROUND(
+            CASE
+                WHEN LAG(daily_comparisons) OVER (ORDER BY comparison_date) > 0 THEN
+                    (daily_comparisons - LAG(daily_comparisons) OVER (ORDER BY comparison_date)) * 100.0 /
+                    LAG(daily_comparisons) OVER (ORDER BY comparison_date)
+                ELSE 0
+                END, 2
+    ) as daily_growth_percent
+FROM comparison_statistics
+WHERE comparison_date >= DATE_SUB(CURDATE(), INTERVAL days_back DAY)
+ORDER BY comparison_date DESC;
 END //
 
 DELIMITER ;
@@ -390,15 +390,15 @@ CREATE EVENT IF NOT EXISTS cleanup_old_anonymous_comparisons
     ON SCHEDULE EVERY 1 WEEK
         STARTS CURRENT_TIMESTAMP
     DO
-    BEGIN
-        DELETE FROM car_comparisons
-        WHERE user_id IS NULL
-          AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+BEGIN
+DELETE FROM car_comparisons
+WHERE user_id IS NULL
+  AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
 
-        -- 오래된 행동 데이터도 정리 (6개월 이상)
-        DELETE FROM user_behaviors
-        WHERE timestamp < DATE_SUB(NOW(), INTERVAL 180 DAY);
-    END //
+-- 오래된 행동 데이터도 정리 (6개월 이상)
+DELETE FROM user_behaviors
+WHERE timestamp < DATE_SUB(NOW(), INTERVAL 180 DAY);
+END //
 DELIMITER ;
 
 -- ========================================

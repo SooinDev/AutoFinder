@@ -7,48 +7,48 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class CustomUserDetails implements UserDetails {
-    private final User user;
+  private final User user;
 
-    public CustomUserDetails(User user) {
-        this.user = user;
-    }
+  public CustomUserDetails(User user) {
+    this.user = user;
+  }
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList(); // 역할(Role)이 필요하면 여기 추가
-    }
+  @Override
+  public Collection<? extends GrantedAuthority> getAuthorities() {
+    return Collections.emptyList(); // 역할(Role)이 필요하면 여기 추가
+  }
 
-    @Override
-    public String getPassword() {
-        return user.getPassword();
-    }
+  @Override
+  public String getPassword() {
+    return user.getPassword();
+  }
 
-    @Override
-    public String getUsername() {
-        return user.getUsername();
-    }
+  @Override
+  public String getUsername() {
+    return user.getUsername();
+  }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+  @Override
+  public boolean isAccountNonExpired() {
+    return true;
+  }
 
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+  @Override
+  public boolean isAccountNonLocked() {
+    return true;
+  }
 
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+  @Override
+  public boolean isCredentialsNonExpired() {
+    return true;
+  }
 
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
+  @Override
+  public boolean isEnabled() {
+    return true;
+  }
 
-    public Long getId() {
-        return user.getId();
-    }
+  public Long getId() {
+    return user.getId();
+  }
 }
