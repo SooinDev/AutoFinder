@@ -9,13 +9,13 @@
  * @returns {Array} 비교 중인 차량 ID 배열
  */
 export const getComparisonList = () => {
-    try {
-        const stored = localStorage.getItem('carComparison');
-        return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-        console.error('비교 목록 로드 실패:', error);
-        return [];
-    }
+  try {
+    const stored = localStorage.getItem('carComparison');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('비교 목록 로드 실패:', error);
+    return [];
+  }
 };
 
 /**
@@ -23,11 +23,11 @@ export const getComparisonList = () => {
  * @param {Array} carIds - 차량 ID 배열
  */
 export const saveComparisonList = (carIds) => {
-    try {
-        localStorage.setItem('carComparison', JSON.stringify(carIds));
-    } catch (error) {
-        console.error('비교 목록 저장 실패:', error);
-    }
+  try {
+    localStorage.setItem('carComparison', JSON.stringify(carIds));
+  } catch (error) {
+    console.error('비교 목록 저장 실패:', error);
+  }
 };
 
 /**
@@ -37,22 +37,22 @@ export const saveComparisonList = (carIds) => {
  * @returns {boolean} 추가 성공 여부
  */
 export const addToComparison = (carId, maxItems = 3) => {
-    const currentList = getComparisonList();
+  const currentList = getComparisonList();
 
-    // 이미 목록에 있는지 확인
-    if (currentList.includes(carId)) {
-        return false;
-    }
+  // 이미 목록에 있는지 확인
+  if (currentList.includes(carId)) {
+    return false;
+  }
 
-    // 최대 개수 확인
-    if (currentList.length >= maxItems) {
-        return false;
-    }
+  // 최대 개수 확인
+  if (currentList.length >= maxItems) {
+    return false;
+  }
 
-    // 추가 및 저장
-    const newList = [...currentList, carId];
-    saveComparisonList(newList);
-    return true;
+  // 추가 및 저장
+  const newList = [...currentList, carId];
+  saveComparisonList(newList);
+  return true;
 };
 
 /**
@@ -60,16 +60,16 @@ export const addToComparison = (carId, maxItems = 3) => {
  * @param {number} carId - 제거할 차량 ID
  */
 export const removeFromComparison = (carId) => {
-    const currentList = getComparisonList();
-    const newList = currentList.filter(id => id !== carId);
-    saveComparisonList(newList);
+  const currentList = getComparisonList();
+  const newList = currentList.filter(id => id !== carId);
+  saveComparisonList(newList);
 };
 
 /**
  * 비교 목록 초기화
  */
 export const clearComparisonList = () => {
-    localStorage.removeItem('carComparison');
+  localStorage.removeItem('carComparison');
 };
 
 /**
@@ -78,8 +78,8 @@ export const clearComparisonList = () => {
  * @returns {boolean} 목록에 있는지 여부
  */
 export const isInComparison = (carId) => {
-    const currentList = getComparisonList();
-    return currentList.includes(carId);
+  const currentList = getComparisonList();
+  return currentList.includes(carId);
 };
 
 /**
@@ -88,10 +88,10 @@ export const isInComparison = (carId) => {
  * @returns {string} 비교 페이지 URL
  */
 export const generateComparisonUrl = (carIds) => {
-    if (!carIds || carIds.length === 0) {
-        return '/compare';
-    }
-    return `/compare?cars=${carIds.join(',')}`;
+  if (!carIds || carIds.length === 0) {
+    return '/compare';
+  }
+  return `/compare?cars=${carIds.join(',')}`;
 };
 
 /**
@@ -100,16 +100,16 @@ export const generateComparisonUrl = (carIds) => {
  * @returns {Array} 차량 ID 배열
  */
 export const extractCarIdsFromUrl = (searchParams) => {
-    const params = new URLSearchParams(searchParams);
-    const carIds = params.get('cars');
+  const params = new URLSearchParams(searchParams);
+  const carIds = params.get('cars');
 
-    if (!carIds) {
-        return [];
-    }
+  if (!carIds) {
+    return [];
+  }
 
-    return carIds.split(',')
-        .map(id => parseInt(id, 10))
-        .filter(id => !isNaN(id));
+  return carIds.split(',')
+      .map(id => parseInt(id, 10))
+      .filter(id => !isNaN(id));
 };
 
 /**
@@ -120,17 +120,17 @@ export const extractCarIdsFromUrl = (searchParams) => {
  * @returns {number} 최고/최저값
  */
 export const findComparisonExtreme = (cars, field, type = 'min') => {
-    const values = cars
-        .map(car => car[field])
-        .filter(value => value !== null && value !== undefined && value !== '정보 없음')
-        .map(value => typeof value === 'number' ? value : parseInt(value))
-        .filter(value => !isNaN(value));
+  const values = cars
+      .map(car => car[field])
+      .filter(value => value !== null && value !== undefined && value !== '정보 없음')
+      .map(value => typeof value === 'number' ? value : parseInt(value))
+      .filter(value => !isNaN(value));
 
-    if (values.length === 0) {
-        return null;
-    }
+  if (values.length === 0) {
+    return null;
+  }
 
-    return type === 'min' ? Math.min(...values) : Math.max(...values);
+  return type === 'min' ? Math.min(...values) : Math.max(...values);
 };
 
 /**
@@ -142,39 +142,39 @@ export const findComparisonExtreme = (cars, field, type = 'min') => {
  * @returns {string} CSS 클래스명
  */
 export const getComparisonHighlightClass = (cars, field, carIndex, preferredDirection = 'lower') => {
-    const currentValue = cars[carIndex][field];
+  const currentValue = cars[carIndex][field];
 
-    if (currentValue === null || currentValue === undefined || currentValue === '정보 없음') {
-        return '';
-    }
-
-    const numValue = typeof currentValue === 'number' ? currentValue : parseInt(currentValue);
-    if (isNaN(numValue)) {
-        return '';
-    }
-
-    const minValue = findComparisonExtreme(cars, field, 'min');
-    const maxValue = findComparisonExtreme(cars, field, 'max');
-
-    if (minValue === null || maxValue === null || minValue === maxValue) {
-        return '';
-    }
-
-    if (preferredDirection === 'lower') {
-        if (numValue === minValue) {
-            return 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 text-green-800 dark:text-green-200';
-        }
-        if (numValue === maxValue) {
-            return 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 text-red-800 dark:text-red-200';
-        }
-    } else {
-        if (numValue === maxValue) {
-            return 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 text-green-800 dark:text-green-200';
-        }
-        if (numValue === minValue) {
-            return 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 text-red-800 dark:text-red-200';
-        }
-    }
-
+  if (currentValue === null || currentValue === undefined || currentValue === '정보 없음') {
     return '';
+  }
+
+  const numValue = typeof currentValue === 'number' ? currentValue : parseInt(currentValue);
+  if (isNaN(numValue)) {
+    return '';
+  }
+
+  const minValue = findComparisonExtreme(cars, field, 'min');
+  const maxValue = findComparisonExtreme(cars, field, 'max');
+
+  if (minValue === null || maxValue === null || minValue === maxValue) {
+    return '';
+  }
+
+  if (preferredDirection === 'lower') {
+    if (numValue === minValue) {
+      return 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 text-green-800 dark:text-green-200';
+    }
+    if (numValue === maxValue) {
+      return 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 text-red-800 dark:text-red-200';
+    }
+  } else {
+    if (numValue === maxValue) {
+      return 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 text-green-800 dark:text-green-200';
+    }
+    if (numValue === minValue) {
+      return 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 text-red-800 dark:text-red-200';
+    }
+  }
+
+  return '';
 };

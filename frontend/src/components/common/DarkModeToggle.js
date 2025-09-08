@@ -3,15 +3,15 @@ import { ThemeContext } from '../../context/ThemeContext';
 import '../../styles/dark-mode-toggle.css'; // CSS 파일 가져오기
 
 const DarkModeToggle = () => {
-    const { darkMode, toggleDarkMode } = useContext(ThemeContext);
+  const { darkMode, toggleDarkMode } = useContext(ThemeContext);
 
-    return (
-        <button
-            className="toggle"
-            aria-pressed={darkMode}
-            onClick={toggleDarkMode}
-            title="테마 전환"
-        >
+  return (
+      <button
+          className="toggle"
+          aria-pressed={darkMode}
+          onClick={toggleDarkMode}
+          title="테마 전환"
+      >
             <span className="toggle__content">
                 <svg aria-hidden="true" className="toggle__backdrop" xmlns="http://www.w3.org/2000/svg" fill="none"
                      viewBox="0 0 290 228">
@@ -91,8 +91,8 @@ const DarkModeToggle = () => {
                     </span>
                 </span>
             </span>
-        </button>
-    );
+      </button>
+  );
 };
 
 export default DarkModeToggle;

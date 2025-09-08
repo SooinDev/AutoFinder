@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark Mode Toggle</title>
-    <link rel="stylesheet" href="dark-mode-toggle.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dark Mode Toggle</title>
+  <link rel="stylesheet" href="dark-mode-toggle.css">
 </head>
 <body>
 <div class="controls">
-    <label for="sync">Sync &lt;body&gt;</label>
-    <input id="sync" type="checkbox" checked/>
+  <label for="sync">Sync &lt;body&gt;</label>
+  <input id="sync" type="checkbox" checked/>
 </div>
 <button class="toggle" aria-pressed="false" title="Toggle Dark Mode">
       <span class="toggle__content">
@@ -210,15 +210,15 @@
 </button>
 
 <script>
-    const BUTTON = document.querySelector("button");
-    const SYNC = document.querySelector("#sync")
-    const TOGGLE = () => {
-        const IS_PRESSED = BUTTON.matches("[aria-pressed=true]");
-        if (SYNC.checked)
-            document.body.setAttribute("data-dark-mode", IS_PRESSED ? false : true);
-        BUTTON.setAttribute("aria-pressed", IS_PRESSED ? false : true);
-    };
-    BUTTON.addEventListener("click", TOGGLE);
+  const BUTTON = document.querySelector("button");
+  const SYNC = document.querySelector("#sync")
+  const TOGGLE = () => {
+    const IS_PRESSED = BUTTON.matches("[aria-pressed=true]");
+    if (SYNC.checked)
+      document.body.setAttribute("data-dark-mode", IS_PRESSED ? false : true);
+    BUTTON.setAttribute("aria-pressed", IS_PRESSED ? false : true);
+  };
+  BUTTON.addEventListener("click", TOGGLE);
 </script>
 </body>
 </html>

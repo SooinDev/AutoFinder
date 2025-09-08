@@ -4,10 +4,10 @@
  * @returns {string} 포맷팅된 가격
  */
 export const formatPrice = (price) => {
-    if (price == null || isNaN(price)) {
-        return '정보 없음';
-    }
-    return price.toLocaleString('ko-KR');
+  if (price == null || isNaN(price)) {
+    return '정보 없음';
+  }
+  return price.toLocaleString('ko-KR');
 };
 
 /**
@@ -16,17 +16,17 @@ export const formatPrice = (price) => {
  * @returns {string} 포맷팅된 숫자
  */
 export const formatNumber = (value) => {
-    if (value == null || value === '정보 없음') {
-        return '정보 없음';
-    }
+  if (value == null || value === '정보 없음') {
+    return '정보 없음';
+  }
 
-    const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
+  const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
 
-    if (isNaN(numValue)) {
-        return '정보 없음';
-    }
+  if (isNaN(numValue)) {
+    return '정보 없음';
+  }
 
-    return numValue.toLocaleString('ko-KR');
+  return numValue.toLocaleString('ko-KR');
 };
 
 /**
@@ -35,17 +35,17 @@ export const formatNumber = (value) => {
  * @returns {string} 포맷팅된 날짜
  */
 export const formatDate = (date) => {
-    if (!date) return '';
+  if (!date) return '';
 
-    const d = typeof date === 'string' ? new Date(date) : date;
+  const d = typeof date === 'string' ? new Date(date) : date;
 
-    if (isNaN(d.getTime())) {
-        return '';
-    }
+  if (isNaN(d.getTime())) {
+    return '';
+  }
 
-    return d.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+  return d.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
 };
