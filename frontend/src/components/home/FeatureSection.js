@@ -1,75 +1,89 @@
-import React from 'react';
+import React from "react";
 
-const features = [
+const Icon = ({ d }) => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {d}
+  </svg>
+);
+
+const FEATURES = [
   {
-    name: '정밀한 검색 필터',
-    description: '가격, 연식, 주행거리, 연료 타입 등 다양한 조건으로 원하는 차량을 빠르게 찾을 수 있습니다.',
+    title: "정밀 검색 필터",
+    body: "모델, 가격, 연식, 주행거리, 연료, 지역 등 다양한 조건으로 원하는 차량을 빠르게 좁혀갈 수 있습니다.",
     icon: (
-        <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
+      <Icon
+        d={
+          <>
+            <circle cx="11" cy="11" r="7" />
+            <line x1="20" y1="20" x2="16.5" y2="16.5" />
+          </>
+        }
+      />
     ),
   },
   {
-    name: '실시간 업데이트',
-    description: '최신 매물 정보가 실시간으로 업데이트되어 새로운 기회를 놓치지 않습니다.',
+    title: "즐겨찾기 기반 AI 추천",
+    body: "즐겨찾기에 차량을 추가하면 머신러닝 모델이 취향을 학습해 비슷한 차량을 추천합니다.",
     icon: (
-        <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+      <Icon
+        d={
+          <path d="M12 21s-7-4.5-7-11a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 6.5-7 11-7 11z" />
+        }
+      />
     ),
   },
   {
-    name: '상세한 차량 정보',
-    description: '각 차량의 상세 정보와 고품질 이미지를 통해 방문 전에 정확한 상태를 확인할 수 있습니다.',
+    title: "차량 비교 & 시장 분석",
+    body: "관심 차량을 나란히 비교하고, 모델별 연식 가격 분포를 차트로 확인해 시세를 파악할 수 있습니다.",
     icon: (
-        <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-    ),
-  },
-  {
-    name: '안전한 거래 지원',
-    description: '신뢰할 수 있는 판매자 정보와 안전 거래 팁으로 안심하고 구매할 수 있습니다.',
-    icon: (
-        <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
+      <Icon
+        d={
+          <>
+            <line x1="4" y1="20" x2="4" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="20" y1="20" x2="20" y2="14" />
+          </>
+        }
+      />
     ),
   },
 ];
 
 const FeatureSection = () => {
   return (
-      <div className="bg-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:text-center">
-            <h2 className="text-base text-teal-600 font-semibold tracking-wide uppercase">주요 기능</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-              더 나은 중고차 거래 경험
-            </p>
-            <p className="mt-4 max-w-2xl text-xl text-gray-500 lg:mx-auto">
-              오토파인더는 중고차 구매의 모든 단계에서 최고의 경험을 제공합니다.
-            </p>
-          </div>
+    <section className="border-b border-line">
+      <div className="container-page py-16 sm:py-20">
+        <div className="max-w-2xl">
+          <span className="section-eyebrow">주요 기능</span>
+          <h2 className="mt-3 section-title">
+            중고차 구매에 필요한 도구들
+          </h2>
+        </div>
 
-          <div className="mt-16">
-            <dl className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-12">
-              {features.map((feature) => (
-                  <div key={feature.name} className="relative bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1">
-                    <dt>
-                      <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-teal-600 to-teal-500 text-white">
-                        {feature.icon}
-                      </div>
-                      <p className="ml-16 text-lg leading-6 font-medium text-gray-900">{feature.name}</p>
-                    </dt>
-                    <dd className="mt-2 ml-16 text-base text-gray-500">{feature.description}</dd>
-                  </div>
-              ))}
-            </dl>
-          </div>
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-5">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="card p-6 card-hover">
+              <div className="grid h-10 w-10 place-items-center rounded-md bg-brand-subtle text-brand">
+                {f.icon}
+              </div>
+              <h3 className="mt-4 text-base font-semibold text-fg">{f.title}</h3>
+              <p className="mt-2 text-sm text-fg-muted leading-relaxed">
+                {f.body}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
+    </section>
   );
 };
 

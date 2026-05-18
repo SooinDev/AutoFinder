@@ -1,187 +1,190 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+
+const FUELS = ["가솔린", "디젤", "LPG", "하이브리드", "전기"];
 
 const CarFilters = ({ filters, setFilters, onSearch, onReset }) => {
   const location = useLocation();
+  const [expanded, setExpanded] = useState(false);
 
-  // 컴포넌트가 마운트될 때 URL 쿼리 파라미터를 확인하여 필터 상태 초기화
   useEffect(() => {
-    // URL 파라미터 파싱
-    const searchParams = new URLSearchParams(location.search);
-    const updatedFilters = { ...filters };
-    let hasChanged = false;
-
-    // 각 필터 항목에 대해 URL 파라미터 확인
-    Object.keys(filters).forEach(key => {
-      const value = searchParams.get(key);
-      if (value !== null && updatedFilters[key] !== value) {
-        updatedFilters[key] = value;
-        hasChanged = true;
+    const sp = new URLSearchParams(location.search);
+    const next = { ...filters };
+    let changed = false;
+    Object.keys(filters).forEach((k) => {
+      const v = sp.get(k);
+      if (v !== null && next[k] !== v) {
+        next[k] = v;
+        changed = true;
       }
     });
-
-    // 필터 값이 변경되었다면 상태 업데이트
-    if (hasChanged) {
-      setFilters(updatedFilters);
-    }
-  }, [location.search]); // 의존성 배열에 location.search 추가
+    if (changed) setFilters(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const years = Array.from({ length: 25 }, (_, i) => {
-    const year = new Date().getFullYear() - i;
-    return { value: year.toString(), label: `${year}년식` };
+    const y = new Date().getFullYear() - i;
+    return y.toString();
   });
 
-  const fuelTypes = [
-    { value: '가솔린', label: '가솔린' },
-    { value: '디젤', label: '디젤' },
-    { value: 'LPG', label: 'LPG' },
-    { value: '하이브리드', label: '하이브리드' },
-    { value: '전기', label: '전기' }
-  ];
-
-  const handleChange = (e) => {
+  const onChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const onSubmit = (e) => {
     e.preventDefault();
     onSearch();
   };
 
+  const activeCount = Object.values(filters).filter(Boolean).length;
+
   return (
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg mb-8 transition-colors duration-300">
-        <div className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">차량 검색 필터</h3>
+    <form onSubmit={onSubmit} className="card p-5 mb-8">
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-base font-semibold text-fg flex items-center gap-2">
+          검색 필터
+          {activeCount > 0 && (
+            <span className="badge badge-brand">{activeCount}개 적용됨</span>
+          )}
+        </h3>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-sm text-fg-muted hover:text-fg"
+        >
+          {expanded ? "간단히 보기" : "상세 필터 +"}
+        </button>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div>
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">차량 모델</label>
+      {/* base row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label htmlFor="model" className="input-label">
+            모델
+          </label>
+          <input
+            id="model"
+            name="model"
+            type="text"
+            placeholder="예: 아반떼, 쏘나타"
+            value={filters.model || ""}
+            onChange={onChange}
+            className="input"
+          />
+        </div>
+        <div>
+          <label htmlFor="year" className="input-label">
+            연식
+          </label>
+          <select
+            id="year"
+            name="year"
+            value={filters.year || ""}
+            onChange={onChange}
+            className="input"
+          >
+            <option value="">전체</option>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}년
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="fuel" className="input-label">
+            연료
+          </label>
+          <select
+            id="fuel"
+            name="fuel"
+            value={filters.fuel || ""}
+            onChange={onChange}
+            className="input"
+          >
+            <option value="">전체</option>
+            {FUELS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* advanced */}
+      {expanded && (
+        <div className="mt-5 pt-5 border-t border-line grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="input-label">가격 범위 (만원)</label>
+            <div className="grid grid-cols-2 gap-2">
               <input
-                  type="text"
-                  id="model"
-                  name="model"
-                  placeholder="모델명을 입력하세요"
-                  value={filters.model || ''}
-                  onChange={handleChange}
-                  className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                name="minPrice"
+                type="number"
+                placeholder="최소"
+                value={filters.minPrice || ""}
+                onChange={onChange}
+                className="input"
               />
-            </div>
-
-            <div>
-              <label htmlFor="year" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">연식</label>
-              <select
-                  id="year"
-                  name="year"
-                  value={filters.year || ''}
-                  onChange={handleChange}
-                  className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">모든 연식</option>
-                {years.map(year => (
-                    <option key={year.value} value={year.value}>{year.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="fuel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">연료 타입</label>
-              <select
-                  id="fuel"
-                  name="fuel"
-                  value={filters.fuel || ''}
-                  onChange={handleChange}
-                  className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">모든 연료</option>
-                {fuelTypes.map(fuel => (
-                    <option key={fuel.value} value={fuel.value}>{fuel.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">가격 범위 (만원)</label>
-              <div className="flex space-x-2">
-                <input
-                    type="number"
-                    id="minPrice"
-                    name="minPrice"
-                    placeholder="최소 가격"
-                    value={filters.minPrice || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-                <span className="flex items-center text-gray-500 dark:text-gray-400">~</span>
-                <input
-                    type="number"
-                    id="maxPrice"
-                    name="maxPrice"
-                    placeholder="최대 가격"
-                    value={filters.maxPrice || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">주행거리 범위 (km)</label>
-              <div className="flex space-x-2">
-                <input
-                    type="number"
-                    id="minMileage"
-                    name="minMileage"
-                    placeholder="최소 주행거리"
-                    value={filters.minMileage || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-                <span className="flex items-center text-gray-500 dark:text-gray-400">~</span>
-                <input
-                    type="number"
-                    id="maxMileage"
-                    name="maxMileage"
-                    placeholder="최대 주행거리"
-                    value={filters.maxMileage || ''}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
+              <input
+                name="maxPrice"
+                type="number"
+                placeholder="최대"
+                value={filters.maxPrice || ""}
+                onChange={onChange}
+                className="input"
+              />
             </div>
           </div>
 
           <div>
-            <label htmlFor="region" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">지역</label>
-            <input
-                type="text"
-                id="region"
-                name="region"
-                placeholder="지역을 입력하세요"
-                value={filters.region || ''}
-                onChange={handleChange}
-                className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-            />
+            <label className="input-label">주행거리 (km)</label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                name="minMileage"
+                type="number"
+                placeholder="최소"
+                value={filters.minMileage || ""}
+                onChange={onChange}
+                className="input"
+              />
+              <input
+                name="maxMileage"
+                type="number"
+                placeholder="최대"
+                value={filters.maxMileage || ""}
+                onChange={onChange}
+                className="input"
+              />
+            </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
-            <button
-                type="button"
-                onClick={onReset}
-                className="mr-3 inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-            >
-              초기화
-            </button>
-            <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
-            >
-              검색하기
-            </button>
+          <div className="md:col-span-2">
+            <label htmlFor="region" className="input-label">
+              지역
+            </label>
+            <input
+              id="region"
+              name="region"
+              type="text"
+              placeholder="예: 서울, 경기"
+              value={filters.region || ""}
+              onChange={onChange}
+              className="input"
+            />
           </div>
         </div>
-      </form>
+      )}
+
+      <div className="mt-5 pt-5 border-t border-line flex items-center justify-end gap-2">
+        <button type="button" onClick={onReset} className="btn btn-ghost">
+          초기화
+        </button>
+        <button type="submit" className="btn btn-primary">
+          검색
+        </button>
+      </div>
+    </form>
   );
 };
 

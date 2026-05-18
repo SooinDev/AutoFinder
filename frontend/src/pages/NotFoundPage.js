@@ -1,25 +1,25 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React from "react";
+import { Link } from "react-router-dom";
 
 const NotFoundPage = () => {
   return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 transition-colors duration-300">
-        <div className="max-w-md w-full text-center">
-          <h1 className="text-9xl font-extrabold text-teal-600 dark:text-teal-400">404</h1>
-          <p className="mt-4 text-xl font-bold text-gray-900 dark:text-white">페이지를 찾을 수 없습니다</p>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-            찾으시는 페이지가 삭제되었거나 주소가 변경되었을 수 있습니다.
-          </p>
-          <div className="mt-8">
-            <Link
-                to="/"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 focus:ring-offset-gray-900"
-            >
-              홈으로 돌아가기
-            </Link>
-          </div>
-        </div>
+    <main className="container-page py-24 sm:py-32 text-center">
+      <p className="text-sm font-medium text-brand">404</p>
+      <h1 className="mt-3 text-4xl sm:text-5xl font-semibold tracking-tight text-fg">
+        페이지를 찾을 수 없습니다
+      </h1>
+      <p className="mt-4 text-base text-fg-muted max-w-md mx-auto">
+        주소가 잘못되었거나 페이지가 이동/삭제되었을 수 있습니다.
+      </p>
+      <div className="mt-8 flex justify-center gap-2">
+        <Link to="/" className="btn btn-primary">
+          홈으로 돌아가기
+        </Link>
+        <Link to="/cars" className="btn btn-secondary">
+          차량 검색
+        </Link>
       </div>
+    </main>
   );
 };
 

@@ -1,168 +1,136 @@
-import React, { useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
-import { login } from '../api/services';
+import React, { useState } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { login } from "../api/services";
 
 const LoginPage = ({ setUserId, setUsername }) => {
-  const [formData, setFormData] = useState({ username: "", password: "", rememberMe: false });
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [form, setForm] = useState({ username: "", password: "", rememberMe: false });
+  const [msg, setMsg] = useState(null);
+  const [ok, setOk] = useState(false);
+  const [loading, setLoading] = useState(false);
   const history = useHistory();
 
-  const handleChange = (e) => {
+  const onChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
+    setForm({ ...form, [name]: type === "checkbox" ? checked : value });
   };
 
-  const handleSubmit = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    setMessage("");
-
+    setLoading(true);
+    setMsg(null);
     try {
-      const userData = await login(formData);
-      const { token, userId } = userData;
-      const usernameToStore = formData.username; // 사용자가 입력한 username 사용
-
-      // "로그인 유지" 체크 여부에 따라 저장 방식 변경
-      if (formData.rememberMe) {
-        localStorage.setItem("token", token);
-        localStorage.setItem("userId", userId);
-        localStorage.setItem("username", usernameToStore); // username 저장
-      } else {
-        sessionStorage.setItem("token", token);
-        sessionStorage.setItem("userId", userId);
-        sessionStorage.setItem("username", usernameToStore); // username 저장
-      }
-
+      const data = await login(form);
+      const { token, userId } = data;
+      const store = form.rememberMe ? localStorage : sessionStorage;
+      store.setItem("token", token);
+      store.setItem("userId", userId);
+      store.setItem("username", form.username);
       setUserId(userId);
-      setUsername(usernameToStore); // 상태 업데이트
-      setMessage("로그인 성공! 차량 목록으로 이동합니다.");
-      setTimeout(() => history.push("/"), 1000);
-    } catch (error) {
-      setMessage("로그인 실패: 아이디 또는 비밀번호를 확인하세요.");
+      setUsername(form.username);
+      setOk(true);
+      setMsg("로그인 성공! 잠시 후 이동합니다.");
+      setTimeout(() => history.push("/"), 800);
+    } catch {
+      setOk(false);
+      setMsg("아이디 또는 비밀번호를 확인해 주세요.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 transition-colors duration-300">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+    <main className="container-page py-16 sm:py-24">
+      <div className="mx-auto max-w-md">
+        <header className="text-center mb-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-fg">
             로그인
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            계정이 없으신가요?{' '}
-            <Link to="/register" className="font-medium text-teal-600 dark:text-teal-400 hover:text-teal-500 dark:hover:text-teal-300">
+          </h1>
+          <p className="mt-2 text-sm text-fg-muted">
+            계정이 없으신가요?{" "}
+            <Link to="/register" className="link font-medium">
               회원가입
             </Link>
           </p>
-        </div>
+        </header>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white dark:bg-gray-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {message && (
-                <div className={`mb-4 rounded-md p-4 ${message.includes('성공') ? 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20' : 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20'}`}>
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      {message.includes('성공') ? (
-                          <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                      ) : (
-                          <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                      )}
-                    </div>
-                    <div className="ml-3">
-                      <p className={`text-sm font-medium ${message.includes('성공') ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
-                        {message}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-            )}
+        <div className="card p-8">
+          {msg && (
+            <div
+              className={
+                "mb-6 p-3.5 rounded-md text-sm border " +
+                (ok
+                  ? "bg-success/10 border-success/30 text-success"
+                  : "bg-danger/10 border-danger/30 text-danger")
+              }
+            >
+              {msg}
+            </div>
+          )}
 
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  아이디
-                </label>
-                <div className="mt-1">
-                  <input
-                      id="username"
-                      name="username"
-                      type="text"
-                      required
-                      value={formData.username}
-                      onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-                      placeholder="아이디를 입력하세요"
-                      disabled={isLoading}
-                  />
-                </div>
-              </div>
+          <form onSubmit={onSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="username" className="input-label">
+                아이디
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                value={form.username}
+                onChange={onChange}
+                required
+                disabled={loading}
+                className="input"
+                placeholder="아이디를 입력하세요"
+                autoComplete="username"
+              />
+            </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  비밀번호
-                </label>
-                <div className="mt-1">
-                  <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm dark:bg-gray-700 dark:text-white"
-                      placeholder="비밀번호를 입력하세요"
-                      disabled={isLoading}
-                  />
-                </div>
-              </div>
+            <div>
+              <label htmlFor="password" className="input-label">
+                비밀번호
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                value={form.password}
+                onChange={onChange}
+                required
+                disabled={loading}
+                className="input"
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                      id="rememberMe"
-                      name="rememberMe"
-                      type="checkbox"
-                      checked={formData.rememberMe}
-                      onChange={handleChange}
-                      className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
-                      disabled={isLoading}
-                  />
-                  <label htmlFor="rememberMe" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
-                    로그인 유지
-                  </label>
-                </div>
-              </div>
+            <label
+              htmlFor="rememberMe"
+              className="flex items-center gap-2.5 cursor-pointer select-none"
+            >
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                checked={form.rememberMe}
+                onChange={onChange}
+                disabled={loading}
+                className="h-4 w-4 rounded border-line bg-bg-inset text-brand focus:ring-brand"
+              />
+              <span className="text-sm text-fg-muted">로그인 상태 유지</span>
+            </label>
 
-              <div>
-                <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 focus:ring-offset-gray-900"
-                >
-                  {isLoading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        로그인 중...
-                      </>
-                  ) : (
-                      "로그인"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary btn-lg w-full"
+            >
+              {loading ? "로그인 중…" : "로그인"}
+            </button>
+          </form>
         </div>
       </div>
+    </main>
   );
 };
 

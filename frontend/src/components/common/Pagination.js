@@ -1,77 +1,73 @@
-import React from 'react';
+import React from "react";
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
 
-  // 페이지 번호 범위 계산 (최대 5개 표시)
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxPagesToShow = 5;
-
-    let startPage = Math.max(1, currentPage + 1 - Math.floor(maxPagesToShow / 2));
-    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-    // 표시되는 페이지가 최대 개수보다 적은 경우 조정
-    if (endPage - startPage + 1 < maxPagesToShow) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
-
-    return pageNumbers;
-  };
-
-
-  const pageNumbers = getPageNumbers();
-  const hasPrevious = currentPage > 0;
+  const cur = currentPage + 1;
+  const last = totalPages;
+  const hasPrev = currentPage > 0;
   const hasNext = currentPage < totalPages - 1;
 
+  const slots = [];
+  slots.push(1);
+  const window = [cur - 1, cur, cur + 1].filter((v) => v > 1 && v < last);
+  if (window[0] > 2) slots.push("…");
+  window.forEach((v) => slots.push(v));
+  if (window.length && window[window.length - 1] < last - 1) slots.push("…");
+  if (last > 1) slots.push(last);
+
   return (
-      <div className="mt-10 flex justify-center">
-        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-          <button
-              onClick={() => hasPrevious && onPageChange(currentPage - 1)}
-              disabled={!hasPrevious}
-              className={`${
-                  hasPrevious ? 'text-gray-500 hover:bg-gray-50' : 'text-gray-300 cursor-not-allowed'
-              } relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium`}
-          >
-            <span className="sr-only">이전</span>
-            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
+    <nav
+      aria-label="페이지네이션"
+      className="mt-10 flex items-center justify-between gap-4"
+    >
+      <p className="text-sm text-fg-muted">
+        <span className="text-fg font-medium">{cur}</span> / {last} 페이지
+      </p>
 
-          {pageNumbers.map(pageNumber => (
-              <button
-                  key={pageNumber}
-                  onClick={() => onPageChange(pageNumber - 1)} // 내부적으로는 0부터 시작하는 인덱스 사용
-                  className={`${
-                      pageNumber === currentPage + 1 // 표시되는 번호와 실제 페이지 인덱스 매핑
-                          ? 'bg-teal-50 border-teal-500 text-teal-600 z-10'
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                  } relative inline-flex items-center px-4 py-2 border text-sm font-medium`}
-              >
-                {pageNumber}
-              </button>
-          ))}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => hasPrev && onPageChange(currentPage - 1)}
+          disabled={!hasPrev}
+          className="btn btn-secondary btn-sm"
+        >
+          이전
+        </button>
 
-          <button
-              onClick={() => hasNext && onPageChange(currentPage + 1)}
-              disabled={!hasNext}
-              className={`${
-                  hasNext ? 'text-gray-500 hover:bg-gray-50' : 'text-gray-300 cursor-not-allowed'
-              } relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium`}
-          >
-            <span className="sr-only">다음</span>
-            <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </nav>
+        <ul className="hidden sm:flex items-center gap-1 mx-1">
+          {slots.map((slot, i) =>
+            slot === "…" ? (
+              <li key={`e-${i}`} className="px-2 text-fg-faint text-sm">
+                …
+              </li>
+            ) : (
+              <li key={slot}>
+                <button
+                  onClick={() => onPageChange(slot - 1)}
+                  aria-current={slot === cur ? "page" : undefined}
+                  className={
+                    "min-w-[2.25rem] h-9 px-2 text-sm font-medium rounded-md transition-colors " +
+                    (slot === cur
+                      ? "bg-brand text-bg"
+                      : "text-fg-muted hover:text-fg hover:bg-bg-inset")
+                  }
+                >
+                  {slot}
+                </button>
+              </li>
+            )
+          )}
+        </ul>
+
+        <button
+          onClick={() => hasNext && onPageChange(currentPage + 1)}
+          disabled={!hasNext}
+          className="btn btn-secondary btn-sm"
+        >
+          다음
+        </button>
       </div>
+    </nav>
   );
 };
 
